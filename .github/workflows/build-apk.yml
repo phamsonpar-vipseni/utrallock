@@ -3,500 +3,146 @@ name: Build Utral Lock 2.0 APK
 on:
   workflow_dispatch:
   push:
-    branches:
-      - main
+    paths:
+      - "*.zip"
 
 jobs:
   build:
-    name: Build Android APK
     runs-on: ubuntu-latest
 
     steps:
-
-      # ==============================
-      # 1. CHECKOUT
-      # ==============================
       - name: Checkout
         uses: actions/checkout@v4
 
-      # ==============================
-      # 2. JAVA 17
-      # ==============================
-      - name: Setup Java 17
+      - name: Extract Android project ZIP
+        shell: bash
+        run: |
+          set -e
+
+          ZIP=$(find . -maxdepth 1 -type f -name '*.zip' | head -n 1)
+
+          if [ -z "$ZIP" ]; then
+            echo "ERROR: Không tìm thấy file ZIP Android."
+            exit 1
+          fi
+
+          rm -rf extracted
+          mkdir -p extracted
+
+          unzip -q "$ZIP" -d extracted
+
+      - name: Find Android project
+        shell: bash
+        run: |
+          set -e
+
+          SETTINGS=$(find extracted \
+            \( -name "settings.gradle" -o -name "settings.gradle.kts" \) \
+            -type f | head -n 1)
+
+          if [ -z "$SETTINGS" ]; then
+            echo "ERROR: Không tìm thấy settings.gradle."
+            exit 1
+          fi
+
+          PROJECT_DIR=$(dirname "$SETTINGS")
+
+          echo "PROJECT_DIR=$PROJECT_DIR" >> "$GITHUB_ENV"
+
+          echo "Android project: $PROJECT_DIR"
+
+      - name: Set up Java 17
         uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: "17"
-          cache: gradle
 
-      # ==============================
-      # 3. ANDROID SDK
-      # ==============================
-      - name: Setup Android SDK
+      - name: Set up Android SDK
         uses: android-actions/setup-android@v3
 
-      - name: Install Android SDK
+      # =========================================================
+      # FIX KOTLIN DUPLICATE CLASSES
+      # Kotlin 1.8.x đã gộp các class JDK7/JDK8 vào stdlib.
+      # Ép toàn bộ Kotlin dependencies về 1.8.22.
+      # =========================================================
+
+      - name: Fix Kotlin duplicate dependencies
+        working-directory: ${{ env.PROJECT_DIR }}
         shell: bash
         run: |
           set -e
 
-          yes | sdkmanager --licenses >/dev/null || true
-
-          sdkmanager \
-            "platform-tools" \
-            "platforms;android-35" \
-            "build-tools;35.0.0"
-
-      # ==============================
-      # 4. CHECK SOURCE
-      # ==============================
-      - name: Check source files
-        shell: bash
-        run: |
-          set -e
-
-          echo "===== ROOT ====="
-          ls -la
-
-          if [ ! -f MainActivity.java ]; then
-            echo "ERROR: MainActivity.java not found"
-            exit 1
-          fi
-
-          echo "MainActivity.java OK"
-
-          if [ ! -f app_icon.png ]; then
-            echo "ERROR: app_icon.png not found"
-            exit 1
-          fi
-
-          echo "app_icon.png OK"
-
-      # ==============================
-      # 5. DETECT PACKAGE
-      # ==============================
-      - name: Detect package
-        shell: bash
-        run: |
-          set -e
-
-          PKG=$(grep -m1 -E \
-            '^[[:space:]]*package[[:space:]]+[A-Za-z0-9_.]+[[:space:]]*;' \
-            MainActivity.java \
-            | sed -E \
-            's/^[[:space:]]*package[[:space:]]+//; s/;//; s/[[:space:]]+//g')
-
-          if [ -z "$PKG" ]; then
-            PKG="com.utrallock.twopointzero"
-          fi
-
-          PKG_PATH=$(echo "$PKG" | tr '.' '/')
-
-          echo "Package: $PKG"
-          echo "Package path: $PKG_PATH"
-
-          echo "PKG=$PKG" >> "$GITHUB_ENV"
-          echo "PKG_PATH=$PKG_PATH" >> "$GITHUB_ENV"
-
-      # ==============================
-      # 6. CREATE PROJECT
-      # ==============================
-      - name: Create Android project
-        shell: bash
-        run: |
-          set -e
-
-          mkdir -p "app/src/main/java/$PKG_PATH"
-          mkdir -p "app/src/main/res/layout"
-          mkdir -p "app/src/main/res/values"
-          mkdir -p "app/src/main/res/drawable-nodpi"
-
-          # ------------------------------
-          # MainActivity
-          # ------------------------------
-          cp MainActivity.java \
-            "app/src/main/java/$PKG_PATH/MainActivity.java"
-
-          # ------------------------------
-          # App icon
-          # ------------------------------
-          cp app_icon.png \
-            app/src/main/res/drawable-nodpi/app_icon.png
-
-          # ------------------------------
-          # Splash image if available
-          # ------------------------------
-          if [ -f splash.jpg ]; then
-            cp splash.jpg \
-              app/src/main/res/drawable-nodpi/splash.jpg
-          fi
-
-      # ==============================
-      # 7. SETTINGS.GRADLE
-      # ==============================
-      - name: Create settings.gradle
-        shell: bash
-        run: |
-          cat > settings.gradle <<'EOF'
-          pluginManagement {
-              repositories {
-                  google()
-                  mavenCentral()
-                  gradlePluginPortal()
-              }
-          }
-
-          dependencyResolutionManagement {
-              repositoriesMode.set(
-                  RepositoriesMode.FAIL_ON_PROJECT_REPOS
-              )
-
-              repositories {
-                  google()
-                  mavenCentral()
-              }
-          }
-
-          rootProject.name = "UtralLock2"
-
-          include(":app")
-          EOF
-
-      # ==============================
-      # 8. ROOT BUILD.GRADLE
-      # ==============================
-      - name: Create root build.gradle
-        shell: bash
-        run: |
-          cat > build.gradle <<'EOF'
-          plugins {
-              id 'com.android.application' version '8.6.1' apply false
-          }
-          EOF
-
-      # ==============================
-      # 9. APP BUILD.GRADLE
-      # ==============================
-      - name: Create app build.gradle
-        shell: bash
-        run: |
-          cat > app/build.gradle <<EOF
-          plugins {
-              id 'com.android.application'
-          }
-
-          android {
-              namespace "$PKG"
-
-              compileSdk 35
-
-              defaultConfig {
-                  applicationId "$PKG"
-
-                  minSdk 23
-                  targetSdk 35
-
-                  versionCode 1
-                  versionName "2.0"
-              }
-
-              buildTypes {
-                  debug {
-                      minifyEnabled false
+          cat > kotlin-fix.init.gradle <<'EOF'
+          allprojects {
+              configurations.configureEach {
+                  resolutionStrategy.eachDependency { details ->
+                      if (details.requested.group == "org.jetbrains.kotlin") {
+                          details.useVersion("1.8.22")
+                          details.because("Prevent duplicate Kotlin stdlib versions")
+                      }
                   }
 
-                  release {
-                      minifyEnabled false
-                      shrinkResources false
-
-                      proguardFiles(
-                          getDefaultProguardFile(
-                              'proguard-android-optimize.txt'
-                          ),
-                          'proguard-rules.pro'
-                      )
-                  }
-              }
-
-              compileOptions {
-                  sourceCompatibility JavaVersion.VERSION_17
-                  targetCompatibility JavaVersion.VERSION_17
+                  resolutionStrategy.force(
+                      "org.jetbrains.kotlin:kotlin-stdlib:1.8.22",
+                      "org.jetbrains.kotlin:kotlin-stdlib-jdk7:1.8.22",
+                      "org.jetbrains.kotlin:kotlin-stdlib-jdk8:1.8.22"
+                  )
               }
           }
-
-          dependencies {
-              implementation 'androidx.appcompat:appcompat:1.7.0'
-              implementation 'androidx.activity:activity:1.9.2'
-              implementation 'androidx.core:core-splashscreen:1.0.1'
-          }
           EOF
 
-      # ==============================
-      # 10. GRADLE PROPERTIES
-      # ==============================
-      - name: Create gradle.properties
-        shell: bash
-        run: |
-          cat > gradle.properties <<'EOF'
-          org.gradle.jvmargs=-Xmx2g -Dfile.encoding=UTF-8
-          android.useAndroidX=true
-          android.nonTransitiveRClass=true
-          EOF
+          echo "Kotlin dependency fix installed."
 
-      # ==============================
-      # 11. MANIFEST
-      # ==============================
-      - name: Create AndroidManifest.xml
-        shell: bash
-        run: |
-          cat > app/src/main/AndroidManifest.xml <<EOF
-          <?xml version="1.0" encoding="utf-8"?>
-
-          <manifest
-              xmlns:android="http://schemas.android.com/apk/res/android">
-
-              <uses-permission
-                  android:name="android.permission.INTERNET" />
-
-              <application
-                  android:allowBackup="false"
-                  android:hardwareAccelerated="true"
-                  android:icon="@drawable/app_icon"
-                  android:label="@string/app_name"
-                  android:resizeableActivity="true"
-                  android:supportsRtl="true"
-                  android:usesCleartextTraffic="true"
-                  android:theme="@style/Theme.UtralLock">
-
-                  <activity
-                      android:name="$PKG.MainActivity"
-                      android:configChanges="keyboard|keyboardHidden|orientation|screenLayout|screenSize|smallestScreenSize"
-                      android:exported="true"
-                      android:screenOrientation="portrait">
-
-                      <intent-filter>
-                          <action
-                              android:name="android.intent.action.MAIN" />
-
-                          <category
-                              android:name="android.intent.category.LAUNCHER" />
-                      </intent-filter>
-
-                  </activity>
-
-              </application>
-
-          </manifest>
-          EOF
-
-      # ==============================
-      # 12. ACTIVITY MAIN
-      # ==============================
-      - name: Create activity_main.xml
-        shell: bash
-        run: |
-          cat > app/src/main/res/layout/activity_main.xml <<'EOF'
-          <?xml version="1.0" encoding="utf-8"?>
-
-          <FrameLayout
-              xmlns:android="http://schemas.android.com/apk/res/android"
-              android:layout_width="match_parent"
-              android:layout_height="match_parent"
-              android:background="#000000">
-
-              <WebView
-                  android:id="@+id/webview"
-                  android:layout_width="match_parent"
-                  android:layout_height="match_parent"
-                  android:background="#000000" />
-
-          </FrameLayout>
-          EOF
-
-      # ==============================
-      # 13. STRINGS
-      # ==============================
-      - name: Create strings.xml
-        shell: bash
-        run: |
-          cat > app/src/main/res/values/strings.xml <<'EOF'
-          <?xml version="1.0" encoding="utf-8"?>
-
-          <resources>
-              <string name="app_name">Utral Lock 2.0🪽</string>
-          </resources>
-          EOF
-
-      # ==============================
-      # 14. SPLASH THEME
-      # ==============================
-      - name: Create themes.xml
-        shell: bash
-        run: |
-          cat > app/src/main/res/values/themes.xml <<'EOF'
-          <?xml version="1.0" encoding="utf-8"?>
-
-          <resources>
-
-              <style
-                  name="Theme.UtralLock"
-                  parent="Theme.SplashScreen">
-
-                  <item name="windowSplashScreenBackground">
-                      #000000
-                  </item>
-
-                  <item name="windowSplashScreenAnimatedIcon">
-                      @drawable/app_icon
-                  </item>
-
-                  <item name="postSplashScreenTheme">
-                      @style/Theme.UtralLock.PostSplash
-                  </item>
-
-              </style>
-
-              <style
-                  name="Theme.UtralLock.PostSplash"
-                  parent="Theme.AppCompat.DayNight.NoActionBar">
-
-                  <item name="android:fontFamily">
-                      sans
-                  </item>
-
-                  <item name="android:windowActionModeOverlay">
-                      true
-                  </item>
-
-                  <item name="android:colorAccent">
-                      #FFFFFF
-                  </item>
-
-                  <item name="android:windowLightStatusBar">
-                      false
-                  </item>
-
-                  <item name="android:navigationBarColor">
-                      #000000
-                  </item>
-
-                  <item name="android:statusBarColor">
-                      #000000
-                  </item>
-
-                  <item name="android:windowNoTitle">
-                      true
-                  </item>
-
-              </style>
-
-          </resources>
-          EOF
-
-      # ==============================
-      # 15. COLORS
-      # ==============================
-      - name: Create colors.xml
-        shell: bash
-        run: |
-          cat > app/src/main/res/values/colors.xml <<'EOF'
-          <?xml version="1.0" encoding="utf-8"?>
-
-          <resources>
-              <color name="black">#000000</color>
-              <color name="white">#FFFFFF</color>
-          </resources>
-          EOF
-
-      # ==============================
-      # 16. PROGUARD
-      # ==============================
-      - name: Create proguard-rules.pro
-        shell: bash
-        run: |
-          if [ -f proguard-rules.pro ]; then
-            cp proguard-rules.pro app/proguard-rules.pro
-          else
-            touch app/proguard-rules.pro
-          fi
-
-      # ==============================
-      # 17. VERIFY PROJECT
-      # ==============================
-      - name: Verify generated project
-        shell: bash
-        run: |
-          set -e
-
-          echo "===== PROJECT FILES ====="
-          find app -type f | sort
-
-          echo ""
-          echo "===== APP BUILD.GRADLE ====="
-          cat app/build.gradle
-
-          echo ""
-          echo "===== MANIFEST ====="
-          cat app/src/main/AndroidManifest.xml
-
-          echo ""
-          echo "===== LAYOUT ====="
-          cat app/src/main/res/layout/activity_main.xml
-
-          echo ""
-          echo "===== MAIN ACTIVITY ====="
-          head -n 15 \
-            "app/src/main/java/$PKG_PATH/MainActivity.java"
-
-      # ==============================
-      # 18. SETUP GRADLE
-      # ==============================
-      - name: Setup Gradle
-        uses: gradle/actions/setup-gradle@v4
-        with:
-          gradle-version: "8.7"
-
-      # ==============================
-      # 19. BUILD DEBUG APK
-      # ==============================
       - name: Build Debug APK
+        working-directory: ${{ env.PROJECT_DIR }}
         shell: bash
         run: |
           set -e
 
-          gradle \
-            --no-daemon \
-            --stacktrace \
-            assembleDebug
+          chmod +x gradlew 2>/dev/null || true
 
-      # ==============================
-      # 20. CHECK APK
-      # ==============================
-      - name: Check APK
+          if [ -f gradlew ]; then
+            ./gradlew \
+              --no-daemon \
+              --stacktrace \
+              --init-script kotlin-fix.init.gradle \
+              assembleDebug
+          else
+            gradle \
+              --no-daemon \
+              --stacktrace \
+              --init-script kotlin-fix.init.gradle \
+              assembleDebug
+          fi
+
+      # =========================================================
+      # CHECK APK
+      # =========================================================
+
+      - name: Find generated APK
         shell: bash
         run: |
           set -e
 
-          APK="app/build/outputs/apk/debug/app-debug.apk"
+          APK=$(find "${PROJECT_DIR}/app/build/outputs/apk" \
+            -type f \
+            -name "*.apk" | head -n 1)
 
-          if [ ! -f "$APK" ]; then
-            echo "ERROR: APK NOT FOUND"
-            find app/build -type f | sort
+          if [ -z "$APK" ]; then
+            echo "ERROR: Build không tạo được APK."
             exit 1
           fi
 
-          echo "================================"
-          echo "APK BUILD SUCCESS"
-          echo "================================"
+          echo "APK FOUND:"
+          echo "$APK"
 
-          ls -lh "$APK"
+      # =========================================================
+      # UPLOAD APK
+      # =========================================================
 
-      # ==============================
-      # 21. UPLOAD APK
-      # ==============================
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
           name: UtralLock2-APK
-          path: app/build/outputs/apk/debug/app-debug.apk
+          path: "${{ env.PROJECT_DIR }}/app/build/outputs/apk/**/*.apk"
           if-no-files-found: error
