@@ -12,15 +12,16 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      # ==========================================
-      # 1. CHECKOUT SOURCE
-      # ==========================================
+
+      # ==============================
+      # 1. CHECKOUT
+      # ==============================
       - name: Checkout
         uses: actions/checkout@v4
 
-      # ==========================================
+      # ==============================
       # 2. JAVA 17
-      # ==========================================
+      # ==============================
       - name: Setup Java 17
         uses: actions/setup-java@v4
         with:
@@ -28,110 +29,114 @@ jobs:
           java-version: "17"
           cache: gradle
 
-      # ==========================================
+      # ==============================
       # 3. ANDROID SDK
-      # ==========================================
+      # ==============================
       - name: Setup Android SDK
         uses: android-actions/setup-android@v3
 
-      - name: Install Android SDK packages
+      - name: Install Android SDK
         shell: bash
         run: |
-          set -eux
+          set -e
 
-          yes | sdkmanager --licenses || true
+          yes | sdkmanager --licenses >/dev/null || true
 
           sdkmanager \
             "platform-tools" \
             "platforms;android-35" \
             "build-tools;35.0.0"
 
-      # ==========================================
-      # 4. CHECK SOURCE FILES
-      # ==========================================
+      # ==============================
+      # 4. CHECK SOURCE
+      # ==============================
       - name: Check source files
         shell: bash
         run: |
-          set -eux
+          set -e
 
-          echo "===== ROOT FILES ====="
+          echo "===== ROOT ====="
           ls -la
 
-          echo "===== REQUIRED FILES ====="
-
-          test -f MainActivity.java || {
-            echo "ERROR: MainActivity.java not found!"
+          if [ ! -f MainActivity.java ]; then
+            echo "ERROR: MainActivity.java not found"
             exit 1
-          }
-
-          echo "MainActivity.java: OK"
-
-          if [ -f AndroidManifest.xml ]; then
-            echo "AndroidManifest.xml: OK"
           fi
 
-          if [ -f splash.jpg ]; then
-            echo "splash.jpg: OK"
+          echo "MainActivity.java OK"
+
+          if [ ! -f app_icon.png ]; then
+            echo "ERROR: app_icon.png not found"
+            exit 1
           fi
 
-          if [ -f app_icon.png ]; then
-            echo "app_icon.png: OK"
-          fi
+          echo "app_icon.png OK"
 
-      # ==========================================
+      # ==============================
       # 5. DETECT PACKAGE
-      # ==========================================
+      # ==============================
       - name: Detect package
         shell: bash
         run: |
-          set -eux
+          set -e
 
-          PKG=$(grep -m1 -E '^[[:space:]]*package[[:space:]]+[A-Za-z0-9_.]+[[:space:]]*;' MainActivity.java \
-            | sed -E 's/^[[:space:]]*package[[:space:]]+//; s/;//; s/[[:space:]]+//g')
+          PKG=$(grep -m1 -E \
+            '^[[:space:]]*package[[:space:]]+[A-Za-z0-9_.]+[[:space:]]*;' \
+            MainActivity.java \
+            | sed -E \
+            's/^[[:space:]]*package[[:space:]]+//; s/;//; s/[[:space:]]+//g')
 
           if [ -z "$PKG" ]; then
             PKG="com.utrallock.twopointzero"
           fi
 
-          echo "Detected package: $PKG"
+          PKG_PATH=$(echo "$PKG" | tr '.' '/')
+
+          echo "Package: $PKG"
+          echo "Package path: $PKG_PATH"
 
           echo "PKG=$PKG" >> "$GITHUB_ENV"
-          echo "PKG_PATH=$(echo "$PKG" | tr '.' '/')" >> "$GITHUB_ENV"
+          echo "PKG_PATH=$PKG_PATH" >> "$GITHUB_ENV"
 
-      # ==========================================
-      # 6. CREATE ANDROID PROJECT
-      # ==========================================
+      # ==============================
+      # 6. CREATE PROJECT
+      # ==============================
       - name: Create Android project
         shell: bash
         run: |
-          set -eux
+          set -e
 
           mkdir -p "app/src/main/java/$PKG_PATH"
+          mkdir -p "app/src/main/res/layout"
           mkdir -p "app/src/main/res/values"
           mkdir -p "app/src/main/res/drawable-nodpi"
 
-          # --------------------------------------
-          # Copy MainActivity
-          # --------------------------------------
+          # ------------------------------
+          # MainActivity
+          # ------------------------------
           cp MainActivity.java \
             "app/src/main/java/$PKG_PATH/MainActivity.java"
 
-          # --------------------------------------
-          # Copy optional resources
-          # --------------------------------------
+          # ------------------------------
+          # App icon
+          # ------------------------------
+          cp app_icon.png \
+            app/src/main/res/drawable-nodpi/app_icon.png
+
+          # ------------------------------
+          # Splash image if available
+          # ------------------------------
           if [ -f splash.jpg ]; then
             cp splash.jpg \
               app/src/main/res/drawable-nodpi/splash.jpg
           fi
 
-          if [ -f app_icon.png ]; then
-            cp app_icon.png \
-              app/src/main/res/drawable-nodpi/app_icon.png
-          fi
-
-          # --------------------------------------
-          # settings.gradle
-          # --------------------------------------
+      # ==============================
+      # 7. SETTINGS.GRADLE
+      # ==============================
+      - name: Create settings.gradle
+        shell: bash
+        run: |
           cat > settings.gradle <<'EOF'
           pluginManagement {
               repositories {
@@ -142,7 +147,9 @@ jobs:
           }
 
           dependencyResolutionManagement {
-              repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)
+              repositoriesMode.set(
+                  RepositoriesMode.FAIL_ON_PROJECT_REPOS
+              )
 
               repositories {
                   google()
@@ -151,21 +158,28 @@ jobs:
           }
 
           rootProject.name = "UtralLock2"
+
           include(":app")
           EOF
 
-          # --------------------------------------
-          # Root build.gradle
-          # --------------------------------------
+      # ==============================
+      # 8. ROOT BUILD.GRADLE
+      # ==============================
+      - name: Create root build.gradle
+        shell: bash
+        run: |
           cat > build.gradle <<'EOF'
           plugins {
               id 'com.android.application' version '8.6.1' apply false
           }
           EOF
 
-          # --------------------------------------
-          # App build.gradle
-          # --------------------------------------
+      # ==============================
+      # 9. APP BUILD.GRADLE
+      # ==============================
+      - name: Create app build.gradle
+        shell: bash
+        run: |
           cat > app/build.gradle <<EOF
           plugins {
               id 'com.android.application'
@@ -173,10 +187,12 @@ jobs:
 
           android {
               namespace "$PKG"
+
               compileSdk 35
 
               defaultConfig {
                   applicationId "$PKG"
+
                   minSdk 23
                   targetSdk 35
 
@@ -192,6 +208,13 @@ jobs:
                   release {
                       minifyEnabled false
                       shrinkResources false
+
+                      proguardFiles(
+                          getDefaultProguardFile(
+                              'proguard-android-optimize.txt'
+                          ),
+                          'proguard-rules.pro'
+                      )
                   }
               }
 
@@ -202,21 +225,30 @@ jobs:
           }
 
           dependencies {
+              implementation 'androidx.appcompat:appcompat:1.7.0'
+              implementation 'androidx.activity:activity:1.9.2'
+              implementation 'androidx.core:core-splashscreen:1.0.1'
           }
           EOF
 
-          # --------------------------------------
-          # gradle.properties
-          # --------------------------------------
+      # ==============================
+      # 10. GRADLE PROPERTIES
+      # ==============================
+      - name: Create gradle.properties
+        shell: bash
+        run: |
           cat > gradle.properties <<'EOF'
           org.gradle.jvmargs=-Xmx2g -Dfile.encoding=UTF-8
           android.useAndroidX=true
           android.nonTransitiveRClass=true
           EOF
 
-          # ======================================
-          # Manifest
-          # ======================================
+      # ==============================
+      # 11. MANIFEST
+      # ==============================
+      - name: Create AndroidManifest.xml
+        shell: bash
+        run: |
           cat > app/src/main/AndroidManifest.xml <<EOF
           <?xml version="1.0" encoding="utf-8"?>
 
@@ -229,23 +261,25 @@ jobs:
               <application
                   android:allowBackup="false"
                   android:hardwareAccelerated="true"
-                  android:label="Utral Lock 2.0🪽"
-                  android:usesCleartextTraffic="true"
+                  android:icon="@drawable/app_icon"
+                  android:label="@string/app_name"
+                  android:resizeableActivity="true"
                   android:supportsRtl="true"
+                  android:usesCleartextTraffic="true"
                   android:theme="@style/Theme.UtralLock">
 
                   <activity
                       android:name="$PKG.MainActivity"
-                      android:exported="true">
+                      android:configChanges="keyboard|keyboardHidden|orientation|screenLayout|screenSize|smallestScreenSize"
+                      android:exported="true"
+                      android:screenOrientation="portrait">
 
                       <intent-filter>
-
                           <action
                               android:name="android.intent.action.MAIN" />
 
                           <category
                               android:name="android.intent.category.LAUNCHER" />
-
                       </intent-filter>
 
                   </activity>
@@ -255,9 +289,36 @@ jobs:
           </manifest>
           EOF
 
-          # ======================================
-          # strings.xml
-          # ======================================
+      # ==============================
+      # 12. ACTIVITY MAIN
+      # ==============================
+      - name: Create activity_main.xml
+        shell: bash
+        run: |
+          cat > app/src/main/res/layout/activity_main.xml <<'EOF'
+          <?xml version="1.0" encoding="utf-8"?>
+
+          <FrameLayout
+              xmlns:android="http://schemas.android.com/apk/res/android"
+              android:layout_width="match_parent"
+              android:layout_height="match_parent"
+              android:background="#000000">
+
+              <WebView
+                  android:id="@+id/webview"
+                  android:layout_width="match_parent"
+                  android:layout_height="match_parent"
+                  android:background="#000000" />
+
+          </FrameLayout>
+          EOF
+
+      # ==============================
+      # 13. STRINGS
+      # ==============================
+      - name: Create strings.xml
+        shell: bash
+        run: |
           cat > app/src/main/res/values/strings.xml <<'EOF'
           <?xml version="1.0" encoding="utf-8"?>
 
@@ -266,9 +327,12 @@ jobs:
           </resources>
           EOF
 
-          # ======================================
-          # themes.xml
-          # ======================================
+      # ==============================
+      # 14. SPLASH THEME
+      # ==============================
+      - name: Create themes.xml
+        shell: bash
+        run: |
           cat > app/src/main/res/values/themes.xml <<'EOF'
           <?xml version="1.0" encoding="utf-8"?>
 
@@ -276,16 +340,40 @@ jobs:
 
               <style
                   name="Theme.UtralLock"
-                  parent="android:style/Theme.Material.Light.NoActionBar">
+                  parent="Theme.SplashScreen">
 
-                  <item name="android:fontFamily">sans</item>
+                  <item name="windowSplashScreenBackground">
+                      #000000
+                  </item>
+
+                  <item name="windowSplashScreenAnimatedIcon">
+                      @drawable/app_icon
+                  </item>
+
+                  <item name="postSplashScreenTheme">
+                      @style/Theme.UtralLock.PostSplash
+                  </item>
+
+              </style>
+
+              <style
+                  name="Theme.UtralLock.PostSplash"
+                  parent="Theme.AppCompat.DayNight.NoActionBar">
+
+                  <item name="android:fontFamily">
+                      sans
+                  </item>
 
                   <item name="android:windowActionModeOverlay">
                       true
                   </item>
 
                   <item name="android:colorAccent">
-                      #000000
+                      #FFFFFF
+                  </item>
+
+                  <item name="android:windowLightStatusBar">
+                      false
                   </item>
 
                   <item name="android:navigationBarColor">
@@ -296,8 +384,8 @@ jobs:
                       #000000
                   </item>
 
-                  <item name="android:windowLightStatusBar">
-                      false
+                  <item name="android:windowNoTitle">
+                      true
                   </item>
 
               </style>
@@ -305,11 +393,13 @@ jobs:
           </resources>
           EOF
 
-          # ======================================
-          # colors.xml
-          # ======================================
-          if [ ! -f app/src/main/res/values/colors.xml ]; then
-            cat > app/src/main/res/values/colors.xml <<'EOF'
+      # ==============================
+      # 15. COLORS
+      # ==============================
+      - name: Create colors.xml
+        shell: bash
+        run: |
+          cat > app/src/main/res/values/colors.xml <<'EOF'
           <?xml version="1.0" encoding="utf-8"?>
 
           <resources>
@@ -317,74 +407,93 @@ jobs:
               <color name="white">#FFFFFF</color>
           </resources>
           EOF
-          fi
 
-      # ==========================================
-      # 7. SHOW GENERATED PROJECT
-      # ==========================================
-      - name: Show Android project
+      # ==============================
+      # 16. PROGUARD
+      # ==============================
+      - name: Create proguard-rules.pro
         shell: bash
         run: |
-          set -eux
+          if [ -f proguard-rules.pro ]; then
+            cp proguard-rules.pro app/proguard-rules.pro
+          else
+            touch app/proguard-rules.pro
+          fi
 
-          echo "===== PACKAGE ====="
-          echo "$PKG"
+      # ==============================
+      # 17. VERIFY PROJECT
+      # ==============================
+      - name: Verify generated project
+        shell: bash
+        run: |
+          set -e
 
-          echo "===== PROJECT ====="
+          echo "===== PROJECT FILES ====="
           find app -type f | sort
 
-          echo "===== BUILD GRADLE ====="
+          echo ""
+          echo "===== APP BUILD.GRADLE ====="
           cat app/build.gradle
 
+          echo ""
           echo "===== MANIFEST ====="
           cat app/src/main/AndroidManifest.xml
 
-      # ==========================================
-      # 8. GRADLE
-      # ==========================================
+          echo ""
+          echo "===== LAYOUT ====="
+          cat app/src/main/res/layout/activity_main.xml
+
+          echo ""
+          echo "===== MAIN ACTIVITY ====="
+          head -n 15 \
+            "app/src/main/java/$PKG_PATH/MainActivity.java"
+
+      # ==============================
+      # 18. SETUP GRADLE
+      # ==============================
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: "8.7"
 
-      # ==========================================
-      # 9. BUILD DEBUG APK
-      # ==========================================
+      # ==============================
+      # 19. BUILD DEBUG APK
+      # ==============================
       - name: Build Debug APK
         shell: bash
         run: |
-          set -eux
+          set -e
 
           gradle \
             --no-daemon \
             --stacktrace \
-            --info \
             assembleDebug
 
-      # ==========================================
-      # 10. CHECK APK
-      # ==========================================
+      # ==============================
+      # 20. CHECK APK
+      # ==============================
       - name: Check APK
         shell: bash
         run: |
-          set -eux
+          set -e
 
           APK="app/build/outputs/apk/debug/app-debug.apk"
 
           if [ ! -f "$APK" ]; then
-            echo "ERROR: APK was not generated!"
-            find app/build -type f | sort || true
+            echo "ERROR: APK NOT FOUND"
+            find app/build -type f | sort
             exit 1
           fi
 
-          echo "===================================="
+          echo "================================"
           echo "APK BUILD SUCCESS"
-          echo "===================================="
+          echo "================================"
+
           ls -lh "$APK"
 
-      # ==========================================
-      # 11. UPLOAD APK
-      # ==========================================
+      # ==============================
+      # 21. UPLOAD APK
+      # ==============================
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
