@@ -18,20 +18,19 @@ jobs:
           distribution: temurin
           java-version: "17"
 
-      - name: Setup Gradle
-        uses: gradle/actions/setup-gradle@v4
-        with:
-          gradle-version: "8.7"
-
       - name: Setup Android SDK
         uses: android-actions/setup-android@v3
 
-      - name: Create Android project structure
+      - name: Create Android project
         shell: bash
         run: |
           set -e
 
-          PKG=$(grep -m1 '^package ' MainActivity.java 2>/dev/null | sed 's/^package //' | sed 's/;//' | tr -d ' ')
+          PKG=$(grep -m1 '^package ' MainActivity.java 2>/dev/null \
+            | sed 's/^package //' \
+            | sed 's/;//' \
+            | tr -d ' ')
+
           if [ -z "$PKG" ]; then
             PKG="com.utrallock.twopointzero"
           fi
@@ -39,19 +38,18 @@ jobs:
           PKG_PATH=$(echo "$PKG" | tr '.' '/')
 
           mkdir -p "app/src/main/java/$PKG_PATH"
-          mkdir -p app/src/main/res/values
-          mkdir -p app/src/main/res/drawable-nodpi
+          mkdir -p "app/src/main/res/values"
+          mkdir -p "app/src/main/res/drawable-nodpi"
 
-          cp MainActivity.java "app/src/main/java/$PKG_PATH/MainActivity.java"
-
-          for f in colors.xml strings.xml themes.xml; do
-            if [ -f "$f" ]; then
-              cp "$f" app/src/main/res/values/
-            fi
-          done
+          cp MainActivity.java \
+            "app/src/main/java/$PKG_PATH/MainActivity.java"
 
           if [ -f splash.jpg ]; then
             cp splash.jpg app/src/main/res/drawable-nodpi/
+          fi
+
+          if [ -f app_icon.png ]; then
+            cp app_icon.png app/src/main/res/drawable-nodpi/
           fi
 
           cat > settings.gradle <<'EOF'
@@ -103,7 +101,7 @@ jobs:
           }
           EOF
 
-          cat > app/src/main/AndroidManifest.xml <<EOF
+          cat > app/src/main/AndroidManifest.xml <<'EOF'
           <manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
               <uses-permission android:name="android.permission.INTERNET" />
@@ -126,6 +124,7 @@ jobs:
                   </activity>
 
               </application>
+
           </manifest>
           EOF
 
@@ -136,32 +135,41 @@ jobs:
           EOF
 
           cat > app/src/main/res/values/themes.xml <<'EOF'
-          <resources xmlns:tools="http://schemas.android.com/tools">
-              <style name="Theme.UtralLock" parent="android:style/Theme.Material.Light.NoActionBar">
+          <resources>
+
+              <style
+                  name="Theme.UtralLock"
+                  parent="android:style/Theme.Material.Light.NoActionBar">
+
                   <item name="android:fontFamily">sans</item>
                   <item name="android:windowActionModeOverlay">true</item>
                   <item name="android:colorAccent">#000000</item>
                   <item name="android:navigationBarColor">#000000</item>
                   <item name="android:statusBarColor">#000000</item>
                   <item name="android:windowLightStatusBar">false</item>
+
               </style>
+
           </resources>
           EOF
 
-          if [ ! -f app/src/main/res/values/colors.xml ]; then
-            cat > app/src/main/res/values/colors.xml <<'EOF'
+          cat > app/src/main/res/values/colors.xml <<'EOF'
           <resources>
               <color name="black">#000000</color>
               <color name="white">#FFFFFF</color>
           </resources>
           EOF
-          fi
 
           cat > gradle.properties <<'EOF'
           org.gradle.jvmargs=-Xmx2g -Dfile.encoding=UTF-8
           android.useAndroidX=true
           android.nonTransitiveRClass=true
           EOF
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: "8.7"
 
       - name: Build APK
         run: gradle --no-daemon assembleDebug
@@ -171,3 +179,4 @@ jobs:
         with:
           name: UtralLock2-APK
           path: app/build/outputs/apk/debug/app-debug.apk
+          if-no-files-found: error
