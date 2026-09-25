@@ -1,0 +1,1816 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MobileConfig Generator Pro</title>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#0d0f14;--surface:#151821;--surface2:#1e2130;--surface3:#252a3d;
+  --border:#2a2f45;--border2:#3a4060;
+  --accent:#3b82f6;--accent2:#06b6d4;--accent-glow:rgba(59,130,246,0.25);
+  --success:#22c55e;--warn:#f59e0b;--error:#ef4444;--purple:#a78bfa;
+  --text:#e2e8f0;--muted:#64748b;--muted2:#94a3b8;
+  --font:'Inter',sans-serif;--mono:'JetBrains Mono',monospace;
+}
+*{margin:0;padding:0;box-sizing:border-box;}
+html,body{height:100%;overflow:hidden;}
+body{background:var(--bg);color:var(--text);font-family:var(--font);font-size:14px;display:flex;flex-direction:column;}
+
+/* ── TOP BAR ── */
+.topbar{
+  display:flex;align-items:center;gap:12px;
+  padding:0 20px;height:52px;min-height:52px;
+  background:var(--surface);border-bottom:1px solid var(--border);
+  flex-shrink:0;z-index:100;
+}
+.logo{font-family:var(--mono);font-weight:700;font-size:15px;color:var(--accent);letter-spacing:-0.5px;}
+.logo span{color:var(--accent2);}
+.topbar-badge{background:var(--accent);color:#fff;font-size:10px;padding:2px 7px;border-radius:10px;font-weight:600;}
+.topbar-right{margin-left:auto;display:flex;align-items:center;gap:10px;}
+.btn-admin{background:transparent;border:1px solid var(--border2);border-radius:8px;color:var(--muted2);padding:6px 14px;cursor:pointer;font-family:var(--font);font-size:12px;transition:.2s;}
+.btn-admin:hover{border-color:var(--accent);color:var(--accent);}
+.btn-admin.active{background:rgba(239,68,68,.1);border-color:var(--error);color:var(--error);}
+.clock{font-family:var(--mono);font-size:12px;color:var(--muted);min-width:72px;text-align:right;}
+
+/* ── MAIN LAYOUT ── */
+.main{display:flex;flex:1;overflow:hidden;}
+
+/* ── SIDEBAR ── */
+.sidebar{
+  width:220px;min-width:220px;
+  background:var(--surface);border-right:1px solid var(--border);
+  display:flex;flex-direction:column;overflow-y:auto;
+}
+.sidebar-section{padding:12px 14px 4px;font-size:10px;color:var(--muted);font-weight:600;letter-spacing:.8px;text-transform:uppercase;}
+.payload-item{
+  display:flex;align-items:center;gap:10px;
+  padding:9px 14px;cursor:pointer;border-left:3px solid transparent;
+  transition:.15s;user-select:none;position:relative;
+}
+.payload-item:hover{background:var(--surface2);}
+.payload-item.active{background:var(--surface3);border-left-color:var(--accent);color:var(--accent);}
+.payload-item.checked .pi-check{opacity:1;}
+.pi-icon{font-size:16px;width:20px;text-align:center;flex-shrink:0;}
+.pi-label{flex:1;font-size:13px;}
+.pi-check{
+  width:16px;height:16px;background:var(--success);border-radius:4px;
+  display:flex;align-items:center;justify-content:center;font-size:9px;
+  opacity:0;transition:.2s;flex-shrink:0;
+}
+.pi-toggle{
+  width:28px;height:16px;background:var(--border2);border-radius:8px;
+  position:relative;cursor:pointer;transition:.2s;flex-shrink:0;
+}
+.pi-toggle::after{
+  content:'';position:absolute;top:2px;left:2px;
+  width:12px;height:12px;background:var(--muted);border-radius:50%;transition:.2s;
+}
+.pi-toggle.on{background:var(--accent);}
+.pi-toggle.on::after{left:14px;background:#fff;}
+.sidebar-bottom{margin-top:auto;padding:12px;border-top:1px solid var(--border);}
+.btn-clear-all{width:100%;padding:8px;background:transparent;border:1px solid var(--border);border-radius:8px;color:var(--muted);cursor:pointer;font-family:var(--font);font-size:12px;transition:.2s;}
+.btn-clear-all:hover{border-color:var(--error);color:var(--error);}
+
+/* ── CENTER PANEL ── */
+.center{flex:1;display:flex;flex-direction:column;overflow:hidden;}
+
+/* Tabs */
+.tabs{display:flex;gap:2px;padding:10px 16px 0;background:var(--surface);border-bottom:1px solid var(--border);overflow-x:auto;flex-shrink:0;}
+.tab{padding:8px 16px;cursor:pointer;font-size:12px;border-radius:6px 6px 0 0;color:var(--muted);white-space:nowrap;transition:.15s;border:1px solid transparent;border-bottom:none;}
+.tab:hover{color:var(--text);}
+.tab.active{background:var(--bg);border-color:var(--border);color:var(--accent);margin-bottom:-1px;}
+
+/* Form area */
+.form-area{flex:1;overflow-y:auto;padding:20px;}
+.form-section{display:none;}
+.form-section.active{display:block;}
+
+.field-group{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:18px;margin-bottom:14px;}
+.field-group-title{font-family:var(--mono);font-size:11px;color:var(--accent2);margin-bottom:14px;display:flex;align-items:center;gap:8px;}
+.field-group-title::after{content:'';flex:1;height:1px;background:var(--border);}
+.field-row{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px;}
+.field-row.full{grid-template-columns:1fr;}
+.field-row:last-child{margin-bottom:0;}
+.field{display:flex;flex-direction:column;gap:5px;}
+.field label{font-size:11px;color:var(--muted2);font-weight:500;}
+.field input,.field select,.field textarea{
+  background:var(--bg);border:1px solid var(--border);border-radius:8px;
+  color:var(--text);padding:8px 11px;font-family:var(--font);font-size:13px;
+  outline:none;transition:.2s;
+}
+.field input:focus,.field select,.field textarea:focus{border-color:var(--accent);box-shadow:0 0 0 2px var(--accent-glow);}
+.field textarea{resize:vertical;min-height:80px;font-family:var(--mono);font-size:12px;}
+.field select{cursor:pointer;}
+.field select option{background:var(--surface2);}
+.hint{font-size:10px;color:var(--muted);margin-top:3px;}
+.tag-row{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px;}
+.tag{background:var(--surface3);border:1px solid var(--border2);border-radius:6px;padding:4px 10px;font-size:11px;color:var(--muted2);cursor:pointer;transition:.15s;}
+.tag.active{background:rgba(59,130,246,.15);border-color:var(--accent);color:var(--accent);}
+
+/* ── FILE SETTINGS ── */
+.file-settings{
+  background:var(--surface);border-top:1px solid var(--border);
+  padding:14px 20px;display:flex;flex-wrap:wrap;gap:12px;align-items:center;flex-shrink:0;
+}
+.fs-field{display:flex;align-items:center;gap:8px;}
+.fs-label{font-size:11px;color:var(--muted);white-space:nowrap;}
+.fs-input{background:var(--bg);border:1px solid var(--border);border-radius:8px;color:var(--text);padding:6px 10px;font-family:var(--mono);font-size:12px;width:140px;outline:none;}
+.fs-input:focus{border-color:var(--accent);}
+.denomination-row{display:flex;gap:4px;flex-wrap:wrap;}
+.denom{
+  padding:5px 9px;background:var(--surface2);border:1px solid var(--border);
+  border-radius:6px;font-size:11px;font-family:var(--mono);color:var(--muted2);
+  cursor:pointer;transition:.15s;white-space:nowrap;
+}
+.denom:hover{border-color:var(--accent2);color:var(--accent2);}
+.denom.active{background:rgba(6,182,212,.15);border-color:var(--accent2);color:var(--accent2);}
+.size-display{font-family:var(--mono);font-size:12px;color:var(--warn);background:rgba(245,158,11,.08);border:1px solid rgba(245,158,11,.2);padding:5px 10px;border-radius:6px;}
+.profile-type-btns{display:flex;gap:6px;}
+.pt-btn{padding:6px 14px;background:var(--surface2);border:1px solid var(--border);border-radius:8px;color:var(--muted2);cursor:pointer;font-family:var(--font);font-size:12px;font-weight:600;transition:.2s;}
+.pt-btn:hover{border-color:var(--accent);color:var(--accent);}
+.pt-btn.active{background:rgba(59,130,246,.15);border-color:var(--accent);color:var(--accent);}
+.btn-generate{
+  margin-left:auto;padding:10px 24px;
+  background:linear-gradient(135deg,var(--accent),var(--accent2));
+  border:none;border-radius:10px;color:#fff;font-weight:600;
+  font-family:var(--font);font-size:13px;cursor:pointer;
+  box-shadow:0 4px 16px rgba(59,130,246,.35);transition:.2s;white-space:nowrap;
+}
+.btn-generate:hover{transform:translateY(-1px);box-shadow:0 6px 20px rgba(59,130,246,.45);}
+.btn-generate:active{transform:translateY(0);}
+
+/* ── RIGHT PANEL (PREVIEW) ── */
+.right-panel{
+  width:320px;min-width:320px;
+  background:var(--surface);border-left:1px solid var(--border);
+  display:flex;flex-direction:column;
+}
+.rp-header{
+  padding:12px 16px;border-bottom:1px solid var(--border);
+  display:flex;align-items:center;gap:8px;flex-shrink:0;
+}
+.rp-title{font-family:var(--mono);font-size:12px;color:var(--accent2);font-weight:600;}
+.rp-badge{background:var(--surface3);border:1px solid var(--border);border-radius:5px;padding:2px 7px;font-size:10px;color:var(--muted);font-family:var(--mono);}
+.btn-copy{margin-left:auto;padding:5px 11px;background:var(--surface3);border:1px solid var(--border);border-radius:6px;color:var(--muted2);cursor:pointer;font-size:11px;font-family:var(--font);transition:.2s;}
+.btn-copy:hover{border-color:var(--accent);color:var(--accent);}
+.preview-code{
+  flex:1;overflow-y:auto;padding:14px;
+  font-family:var(--mono);font-size:11px;line-height:1.7;
+  color:var(--text);white-space:pre-wrap;word-break:break-all;
+}
+.preview-code .xml-tag{color:var(--accent);}
+.preview-code .xml-key{color:var(--accent2);}
+.preview-code .xml-str{color:var(--success);}
+.preview-code .xml-bool{color:var(--warn);}
+.preview-code .xml-comment{color:var(--muted);}
+.preview-code .xml-data{color:var(--purple);}
+
+/* ── MODAL ── */
+.modal-overlay{
+  position:fixed;inset:0;background:rgba(0,0,0,.7);
+  display:flex;align-items:center;justify-content:center;z-index:999;
+  backdrop-filter:blur(4px);
+}
+.modal-overlay.hidden{display:none;}
+.modal{
+  background:var(--surface);border:1px solid var(--border2);border-radius:16px;
+  padding:28px;width:380px;max-width:95vw;
+  box-shadow:0 20px 60px rgba(0,0,0,.5);
+}
+.modal h3{font-family:var(--mono);font-size:16px;margin-bottom:6px;color:var(--text);}
+.modal p{color:var(--muted2);font-size:13px;margin-bottom:20px;}
+.modal-field{margin-bottom:14px;}
+.modal-field label{display:block;font-size:11px;color:var(--muted2);margin-bottom:5px;font-weight:500;}
+.modal-field input{
+  width:100%;background:var(--bg);border:1px solid var(--border);border-radius:8px;
+  color:var(--text);padding:9px 12px;font-family:var(--font);font-size:13px;outline:none;
+}
+.modal-field input:focus{border-color:var(--accent);}
+.modal-btns{display:flex;gap:10px;justify-content:flex-end;margin-top:20px;}
+.btn-modal{padding:9px 20px;border-radius:8px;cursor:pointer;font-family:var(--font);font-size:13px;font-weight:600;transition:.2s;border:1px solid transparent;}
+.btn-cancel{background:var(--surface2);border-color:var(--border);color:var(--muted2);}
+.btn-cancel:hover{border-color:var(--border2);color:var(--text);}
+.btn-confirm{background:var(--accent);color:#fff;}
+.btn-confirm:hover{background:#2563eb;}
+.modal-error{color:var(--error);font-size:12px;margin-top:4px;display:none;}
+
+/* ── ADMIN PANEL ── */
+.admin-panel{
+  position:fixed;inset:0;background:var(--bg);z-index:500;
+  display:flex;flex-direction:column;
+}
+.admin-panel.hidden{display:none;}
+.admin-topbar{
+  display:flex;align-items:center;gap:14px;padding:0 20px;
+  height:52px;background:var(--surface);border-bottom:1px solid var(--border);flex-shrink:0;
+}
+.admin-title{font-family:var(--mono);font-size:15px;font-weight:700;color:var(--error);}
+.admin-tabs{display:flex;gap:4px;padding:12px 20px;border-bottom:1px solid var(--border);background:var(--surface);flex-shrink:0;}
+.admin-tab{padding:7px 16px;border-radius:8px;cursor:pointer;font-size:12px;font-weight:600;color:var(--muted2);transition:.15s;border:1px solid transparent;}
+.admin-tab:hover{color:var(--text);}
+.admin-tab.active{background:var(--surface3);border-color:var(--border2);color:var(--accent);}
+.admin-content{flex:1;overflow-y:auto;padding:20px;}
+.admin-section{display:none;}
+.admin-section.active{display:block;}
+
+/* Admin: Base64 uploader */
+.upload-area{
+  border:2px dashed var(--border2);border-radius:12px;padding:28px;
+  text-align:center;cursor:pointer;transition:.2s;margin-bottom:16px;
+}
+.upload-area:hover{border-color:var(--accent);}
+.upload-area p{color:var(--muted2);font-size:13px;}
+.upload-area .ua-icon{font-size:32px;margin-bottom:8px;}
+.b64-list{display:flex;flex-direction:column;gap:8px;}
+.b64-item{
+  background:var(--surface2);border:1px solid var(--border);border-radius:10px;
+  padding:12px 14px;display:flex;align-items:center;gap:12px;
+}
+.b64-name{font-family:var(--mono);font-size:12px;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.b64-size{font-size:11px;color:var(--muted);white-space:nowrap;}
+.b64-del{background:transparent;border:none;color:var(--error);cursor:pointer;font-size:16px;padding:2px 6px;border-radius:4px;transition:.2s;}
+.b64-del:hover{background:rgba(239,68,68,.1);}
+
+/* History table */
+.hist-table{width:100%;border-collapse:collapse;}
+.hist-table th{text-align:left;padding:8px 12px;font-size:11px;color:var(--muted);border-bottom:1px solid var(--border);font-weight:600;}
+.hist-table td{padding:10px 12px;font-size:12px;border-bottom:1px solid var(--border);vertical-align:middle;}
+.hist-table tr:hover td{background:var(--surface2);}
+.hist-badge{display:inline-block;padding:2px 8px;border-radius:10px;font-size:10px;font-weight:600;}
+.hist-badge.ffth{background:rgba(59,130,246,.15);color:var(--accent);}
+.hist-badge.ffm{background:rgba(6,182,212,.15);color:var(--accent2);}
+.btn-hist-dl{background:transparent;border:1px solid var(--border);border-radius:6px;color:var(--muted2);padding:4px 10px;cursor:pointer;font-size:11px;font-family:var(--font);transition:.2s;}
+.btn-hist-dl:hover{border-color:var(--accent);color:var(--accent);}
+.empty-state{text-align:center;padding:40px;color:var(--muted);font-size:13px;}
+
+/* Admin: AI Chat */
+.chat-area{
+  background:var(--surface);border:1px solid var(--border);border-radius:12px;
+  height:360px;overflow-y:auto;padding:14px;margin-bottom:12px;
+  display:flex;flex-direction:column;gap:10px;
+}
+.chat-msg{padding:10px 14px;border-radius:10px;max-width:85%;font-size:13px;line-height:1.6;}
+.chat-msg.user{background:rgba(59,130,246,.15);border:1px solid rgba(59,130,246,.2);align-self:flex-end;}
+.chat-msg.ai{background:var(--surface2);border:1px solid var(--border);align-self:flex-start;}
+.chat-msg.ai .ai-label{font-size:10px;color:var(--accent2);font-weight:600;margin-bottom:4px;font-family:var(--mono);}
+.chat-input-row{display:flex;gap:8px;}
+.chat-input{
+  flex:1;background:var(--bg);border:1px solid var(--border);border-radius:10px;
+  color:var(--text);padding:10px 14px;font-family:var(--font);font-size:13px;outline:none;
+}
+.chat-input:focus{border-color:var(--accent);}
+.btn-chat-send{
+  padding:10px 18px;background:var(--accent);border:none;border-radius:10px;
+  color:#fff;font-weight:600;font-family:var(--font);cursor:pointer;transition:.2s;
+}
+.btn-chat-send:hover{background:#2563eb;}
+.quick-questions{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px;}
+.qq-btn{padding:6px 12px;background:var(--surface2);border:1px solid var(--border);border-radius:8px;font-size:11px;color:var(--muted2);cursor:pointer;transition:.15s;}
+.qq-btn:hover{border-color:var(--accent);color:var(--accent);}
+
+/* Admin: Settings */
+.settings-card{background:var(--surface2);border:1px solid var(--border);border-radius:12px;padding:18px;margin-bottom:14px;}
+.settings-card h4{font-size:13px;font-weight:600;margin-bottom:12px;color:var(--text);}
+.setting-row{display:flex;align-items:center;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--border);}
+.setting-row:last-child{border-bottom:none;}
+.setting-info .st{font-size:13px;color:var(--text);}
+.setting-info .sd{font-size:11px;color:var(--muted);margin-top:2px;}
+.toggle-switch{width:40px;height:22px;background:var(--border2);border-radius:11px;position:relative;cursor:pointer;transition:.2s;flex-shrink:0;}
+.toggle-switch::after{content:'';position:absolute;top:3px;left:3px;width:16px;height:16px;background:var(--muted);border-radius:50%;transition:.2s;}
+.toggle-switch.on{background:var(--accent);}
+.toggle-switch.on::after{left:21px;background:#fff;}
+
+/* Toast */
+.toast{
+  position:fixed;bottom:20px;right:20px;
+  background:var(--surface2);border:1px solid var(--border2);border-radius:10px;
+  padding:12px 18px;font-size:13px;z-index:9999;
+  transform:translateY(80px);opacity:0;transition:.35s cubic-bezier(.34,1.56,.64,1);
+  pointer-events:none;
+}
+.toast.show{transform:translateY(0);opacity:1;}
+.toast.success{border-color:var(--success);color:var(--success);}
+.toast.error{border-color:var(--error);color:var(--error);}
+.toast.info{border-color:var(--accent);color:var(--accent);}
+
+/* Scrollbars */
+::-webkit-scrollbar{width:5px;height:5px;}
+::-webkit-scrollbar-track{background:transparent;}
+::-webkit-scrollbar-thumb{background:var(--border2);border-radius:3px;}
+::-webkit-scrollbar-thumb:hover{background:var(--muted);}
+
+/* Responsive */
+@media(max-width:900px){
+  .right-panel{display:none;}
+  .sidebar{width:180px;min-width:180px;}
+}
+@media(max-width:600px){
+  .sidebar{display:none;}
+  html,body{overflow:auto;}
+  .main{flex-direction:column;}
+  .center{min-height:0;}
+}
+</style>
+</head>
+<body>
+
+<!-- ══ TOP BAR ══ -->
+<div class="topbar">
+  <span class="logo">Config<span>Forge</span>.pro</span>
+  <span class="topbar-badge">MDM</span>
+  <div class="topbar-right">
+    <span class="clock" id="clock">00:00:00</span>
+    <button class="btn-admin" id="btnAdmin" onclick="openAdminLogin()">⚙ Admin</button>
+  </div>
+</div>
+
+<!-- ══ MAIN ══ -->
+<div class="main">
+
+  <!-- ── SIDEBAR ── -->
+  <div class="sidebar">
+    <div class="sidebar-section">Loại Payload</div>
+
+    <div class="payload-item" data-id="general" onclick="selectPayload('general')">
+      <span class="pi-icon">📋</span><span class="pi-label">Thông tin chung</span>
+    </div>
+    <div class="payload-item" data-id="dns" onclick="togglePayload('dns',this)">
+      <span class="pi-icon">🌐</span><span class="pi-label">DNS</span>
+      <div class="pi-toggle" id="tog-dns"></div>
+    </div>
+    <div class="payload-item" data-id="vpn" onclick="togglePayload('vpn',this)">
+      <span class="pi-icon">🔒</span><span class="pi-label">VPN</span>
+      <div class="pi-toggle" id="tog-vpn"></div>
+    </div>
+    <div class="payload-item" data-id="cert" onclick="togglePayload('cert',this)">
+      <span class="pi-icon">🔐</span><span class="pi-label">Chứng chỉ</span>
+      <div class="pi-toggle" id="tog-cert"></div>
+    </div>
+    <div class="payload-item" data-id="accept" onclick="togglePayload('accept',this)">
+      <span class="pi-icon">📜</span><span class="pi-label">Chấp nhận điều khoản</span>
+      <div class="pi-toggle" id="tog-accept"></div>
+    </div>
+    <div class="payload-item" data-id="webclip" onclick="togglePayload('webclip',this)">
+      <span class="pi-icon">🔗</span><span class="pi-label">Web Clip</span>
+      <div class="pi-toggle" id="tog-webclip"></div>
+    </div>
+    <div class="payload-item" data-id="restrict" onclick="togglePayload('restrict',this)">
+      <span class="pi-icon">🚫</span><span class="pi-label">Giới hạn</span>
+      <div class="pi-toggle" id="tog-restrict"></div>
+    </div>
+    <div class="payload-item" data-id="wifi" onclick="togglePayload('wifi',this)">
+      <span class="pi-icon">📶</span><span class="pi-label">WiFi</span>
+      <div class="pi-toggle" id="tog-wifi"></div>
+    </div>
+    <div class="payload-item" data-id="domain" onclick="togglePayload('domain',this)">
+      <span class="pi-icon">🏢</span><span class="pi-label">Miền (Domain)</span>
+      <div class="pi-toggle" id="tog-domain"></div>
+    </div>
+    <div class="payload-item" data-id="airplay" onclick="togglePayload('airplay',this)">
+      <span class="pi-icon">📡</span><span class="pi-label">AirPlay</span>
+      <div class="pi-toggle" id="tog-airplay"></div>
+    </div>
+    <div class="payload-item" data-id="digital" onclick="togglePayload('digital',this)">
+      <span class="pi-icon">💎</span><span class="pi-label">com.config.digital</span>
+      <div class="pi-toggle" id="tog-digital"></div>
+    </div>
+
+    <div class="sidebar-bottom">
+      <button class="btn-clear-all" onclick="clearAllPayloads()">✕ Bỏ chọn tất cả</button>
+    </div>
+  </div>
+
+  <!-- ── CENTER ── -->
+  <div class="center">
+    <div class="tabs" id="tabBar">
+      <div class="tab active" data-tab="general" onclick="switchTab('general')">📋 Chung</div>
+    </div>
+
+    <div class="form-area" id="formArea">
+
+      <!-- GENERAL -->
+      <div class="form-section active" id="sec-general">
+        <div class="field-group">
+          <div class="field-group-title">Thông tin hồ sơ</div>
+          <div class="field-row">
+            <div class="field">
+              <label>Tên cấu hình *</label>
+              <input id="g-name" type="text" placeholder="VD: CấuHình_CôngTy_2024" oninput="updatePreview()">
+            </div>
+            <div class="field">
+              <label>Tên tổ chức / doanh nghiệp</label>
+              <input id="g-org" type="text" placeholder="VD: Công Ty TNHH ABC" oninput="updatePreview()">
+            </div>
+          </div>
+          <div class="field-row full">
+            <div class="field">
+              <label>Mô tả</label>
+              <input id="g-desc" type="text" placeholder="Mô tả ngắn về cấu hình này" oninput="updatePreview()">
+            </div>
+          </div>
+          <div class="field-row">
+            <div class="field">
+              <label>Phiên bản</label>
+              <input id="g-ver" type="text" placeholder="1.0" value="1.0" oninput="updatePreview()">
+            </div>
+            <div class="field">
+              <label>Số serial thiết bị *</label>
+              <input id="g-serial" type="text" placeholder="VD: C02XG2JHJGH5" oninput="onSerialInput()">
+              <span class="hint">Bắt buộc để tạo file. Xem trong: Cài đặt → Giới thiệu → Serial</span>
+            </div>
+          </div>
+          <div class="field-row">
+            <div class="field">
+              <label>Phạm vi áp dụng</label>
+              <select id="g-scope" onchange="updatePreview()">
+                <option value="System">System (toàn bộ thiết bị)</option>
+                <option value="User">User (người dùng hiện tại)</option>
+              </select>
+            </div>
+            <div class="field">
+              <label>Hành vi khi cài</label>
+              <select id="g-removal" onchange="updatePreview()">
+                <option value="Always">Cho phép gỡ bỏ</option>
+                <option value="WithAuthentication">Cần mật khẩu để gỡ</option>
+                <option value="Never">Không cho phép gỡ</option>
+              </select>
+            </div>
+          </div>
+        </div>
+
+        <div class="field-group">
+          <div class="field-group-title">Loại profile</div>
+          <div class="profile-type-btns" style="margin-bottom:0">
+            <button class="pt-btn active" id="pt-ffth" onclick="setProfileType('FFTH')">FFTH</button>
+            <button class="pt-btn" id="pt-ffm" onclick="setProfileType('FFM')">FFM</button>
+          </div>
+          <p class="hint" style="margin-top:8px">FFTH: Hồ sơ tiêu chuẩn · FFM: Hồ sơ nâng cao với metadata bổ sung</p>
+        </div>
+      </div>
+
+      <!-- DNS -->
+      <div class="form-section" id="sec-dns">
+        <div class="field-group">
+          <div class="field-group-title">DNS over HTTPS / TLS</div>
+          <div class="field-row">
+            <div class="field">
+              <label>Giao thức DNS</label>
+              <select id="dns-proto" onchange="updatePreview()">
+                <option value="HTTPS">DNS over HTTPS (DoH)</option>
+                <option value="TLS">DNS over TLS (DoT)</option>
+              </select>
+            </div>
+            <div class="field">
+              <label>URL máy chủ DoH</label>
+              <input id="dns-url" type="text" placeholder="https://dns.cloudflare.com/dns-query" oninput="updatePreview()">
+            </div>
+          </div>
+          <div class="field-row full">
+            <div class="field">
+              <label>Tên máy chủ (hiển thị)</label>
+              <input id="dns-name" type="text" placeholder="Cloudflare DNS" oninput="updatePreview()">
+            </div>
+          </div>
+          <div class="field-row full">
+            <div class="field">
+              <label>Địa chỉ IP máy chủ DNS (mỗi dòng 1 IP)</label>
+              <textarea id="dns-ips" placeholder="1.1.1.1&#10;1.0.0.1" oninput="updatePreview()"></textarea>
+            </div>
+          </div>
+          <div class="field-row full">
+            <div class="field">
+              <label>Áp dụng cho miền (mỗi dòng 1 miền, để trống = áp dụng tất cả)</label>
+              <textarea id="dns-domains" placeholder="example.com&#10;*.company.internal" oninput="updatePreview()"></textarea>
+            </div>
+          </div>
+        </div>
+        <div class="field-group">
+          <div class="field-group-title">DNS nhanh</div>
+          <div class="tag-row">
+            <div class="tag" onclick="setDNS('https://dns.cloudflare.com/dns-query','1.1.1.1\n1.0.0.1','Cloudflare')">Cloudflare 1.1.1.1</div>
+            <div class="tag" onclick="setDNS('https://dns.google/dns-query','8.8.8.8\n8.8.4.4','Google')">Google 8.8.8.8</div>
+            <div class="tag" onclick="setDNS('https://doh.opendns.com/dns-query','208.67.222.222\n208.67.220.220','OpenDNS')">OpenDNS</div>
+            <div class="tag" onclick="setDNS('https://dns.adguard.com/dns-query','94.140.14.14\n94.140.15.15','AdGuard')">AdGuard</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- VPN -->
+      <div class="form-section" id="sec-vpn">
+        <div class="field-group">
+          <div class="field-group-title">Cấu hình VPN</div>
+          <div class="field-row">
+            <div class="field">
+              <label>Giao thức</label>
+              <select id="vpn-proto" onchange="updatePreview()">
+                <option value="IKEv2">IKEv2</option>
+                <option value="IPSec">IPSec</option>
+                <option value="L2TP">L2TP</option>
+                <option value="PPTP">PPTP</option>
+                <option value="AlwaysOn">Always-On IKEv2</option>
+              </select>
+            </div>
+            <div class="field">
+              <label>Máy chủ VPN</label>
+              <input id="vpn-server" type="text" placeholder="vpn.company.com" oninput="updatePreview()">
+            </div>
+          </div>
+          <div class="field-row">
+            <div class="field">
+              <label>Tên người dùng</label>
+              <input id="vpn-user" type="text" placeholder="username" oninput="updatePreview()">
+            </div>
+            <div class="field">
+              <label>Mật khẩu</label>
+              <input id="vpn-pass" type="password" placeholder="(để trống nếu hỏi khi kết nối)" oninput="updatePreview()">
+            </div>
+          </div>
+          <div class="field-row">
+            <div class="field">
+              <label>Tên hiển thị kết nối</label>
+              <input id="vpn-display" type="text" placeholder="VPN Công Ty" oninput="updatePreview()">
+            </div>
+            <div class="field">
+              <label>Remote ID</label>
+              <input id="vpn-rid" type="text" placeholder="vpn.company.com" oninput="updatePreview()">
+            </div>
+          </div>
+          <div class="field-row">
+            <div class="field">
+              <label>Phương thức xác thực</label>
+              <select id="vpn-auth" onchange="updatePreview()">
+                <option value="Password">Mật khẩu</option>
+                <option value="Certificate">Chứng chỉ</option>
+                <option value="SharedSecret">Shared Secret</option>
+              </select>
+            </div>
+            <div class="field">
+              <label>Kết nối theo yêu cầu</label>
+              <select id="vpn-demand" onchange="updatePreview()">
+                <option value="0">Không</option>
+                <option value="1">Có (On Demand)</option>
+              </select>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- CERT -->
+      <div class="form-section" id="sec-cert">
+        <div class="field-group">
+          <div class="field-group-title">Chứng chỉ PKCS#1 / PKCS#12</div>
+          <div class="field-row">
+            <div class="field">
+              <label>Loại chứng chỉ</label>
+              <select id="cert-type" onchange="updatePreview()">
+                <option value="com.apple.security.root">Root CA</option>
+                <option value="com.apple.security.pkcs12">PKCS#12 (P12)</option>
+                <option value="com.apple.security.pkcs1">PKCS#1 (DER)</option>
+                <option value="com.apple.security.pem">PEM</option>
+              </select>
+            </div>
+            <div class="field">
+              <label>Tên chứng chỉ</label>
+              <input id="cert-name" type="text" placeholder="Company Root CA" oninput="updatePreview()">
+            </div>
+          </div>
+          <div class="field-row full">
+            <div class="field">
+              <label>Dữ liệu chứng chỉ (Base64)</label>
+              <textarea id="cert-data" placeholder="Dán nội dung Base64 của chứng chỉ vào đây..." oninput="updatePreview()"></textarea>
+              <span class="hint">Hoặc upload từ Admin Panel → Base64 Assets</span>
+            </div>
+          </div>
+          <div class="field-row">
+            <div class="field">
+              <label>Mật khẩu PKCS#12 (nếu có)</label>
+              <input id="cert-pass" type="password" placeholder="(không bắt buộc)" oninput="updatePreview()">
+            </div>
+            <div class="field">
+              <label>Cho phép ứng dụng truy cập</label>
+              <select id="cert-access" onchange="updatePreview()">
+                <option value="0">Không</option>
+                <option value="1">Có</option>
+              </select>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ACCEPT -->
+      <div class="form-section" id="sec-accept">
+        <div class="field-group">
+          <div class="field-group-title">Thông báo chấp nhận (Accept/EUA)</div>
+          <div class="field-row full">
+            <div class="field">
+              <label>Tiêu đề thông báo</label>
+              <input id="acc-title" type="text" placeholder="Điều khoản sử dụng thiết bị" oninput="updatePreview()">
+            </div>
+          </div>
+          <div class="field-row full">
+            <div class="field">
+              <label>Nội dung thông báo</label>
+              <textarea id="acc-body" style="min-height:120px" placeholder="Nhập nội dung điều khoản sử dụng..." oninput="updatePreview()"></textarea>
+            </div>
+          </div>
+          <div class="field-row">
+            <div class="field">
+              <label>Hiển thị khi</label>
+              <select id="acc-trigger" onchange="updatePreview()">
+                <option value="Enrollment">Khi đăng ký MDM</option>
+                <option value="Always">Mỗi lần cài đặt</option>
+              </select>
+            </div>
+            <div class="field">
+              <label>Bắt buộc chấp nhận</label>
+              <select id="acc-required" onchange="updatePreview()">
+                <option value="true">Có</option>
+                <option value="false">Không</option>
+              </select>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- WEBCLIP -->
+      <div class="form-section" id="sec-webclip">
+        <div class="field-group">
+          <div class="field-group-title">Web Clip (Shortcut trên màn hình)</div>
+          <div class="field-row">
+            <div class="field">
+              <label>Tiêu đề Web Clip</label>
+              <input id="wc-label" type="text" placeholder="Cổng thông tin công ty" oninput="updatePreview()">
+            </div>
+            <div class="field">
+              <label>URL</label>
+              <input id="wc-url" type="text" placeholder="https://portal.company.com" oninput="updatePreview()">
+            </div>
+          </div>
+          <div class="field-row">
+            <div class="field">
+              <label>Icon (Base64, PNG 60×60 hoặc 120×120)</label>
+              <input id="wc-icon" type="text" placeholder="(dán Base64 PNG)" oninput="updatePreview()">
+            </div>
+            <div class="field">
+              <label>Mở toàn màn hình</label>
+              <select id="wc-fullscreen" onchange="updatePreview()">
+                <option value="true">Có</option>
+                <option value="false">Không</option>
+              </select>
+            </div>
+          </div>
+          <div class="field-row">
+            <div class="field">
+              <label>Ngăn xóa</label>
+              <select id="wc-removable" onchange="updatePreview()">
+                <option value="false">Không (không thể xóa)</option>
+                <option value="true">Cho phép xóa</option>
+              </select>
+            </div>
+            <div class="field">
+              <label>Ẩn icon Safari</label>
+              <select id="wc-ignoremanifest" onchange="updatePreview()">
+                <option value="false">Không</option>
+                <option value="true">Có</option>
+              </select>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- RESTRICTIONS -->
+      <div class="form-section" id="sec-restrict">
+        <div class="field-group">
+          <div class="field-group-title">Giới hạn ứng dụng & tính năng</div>
+          <div class="field-row">
+            <div class="field">
+              <label>Cho phép cài ứng dụng</label>
+              <select id="r-installapps" onchange="updatePreview()">
+                <option value="true">Có</option>
+                <option value="false">Không</option>
+              </select>
+            </div>
+            <div class="field">
+              <label>Cho phép xóa ứng dụng</label>
+              <select id="r-removeapps" onchange="updatePreview()">
+                <option value="true">Có</option>
+                <option value="false">Không</option>
+              </select>
+            </div>
+          </div>
+          <div class="field-row">
+            <div class="field">
+              <label>Cho phép App Store</label>
+              <select id="r-appstore" onchange="updatePreview()">
+                <option value="true">Có</option>
+                <option value="false">Không</option>
+              </select>
+            </div>
+            <div class="field">
+              <label>Cho phép Safari</label>
+              <select id="r-safari" onchange="updatePreview()">
+                <option value="true">Có</option>
+                <option value="false">Không</option>
+              </select>
+            </div>
+          </div>
+          <div class="field-row">
+            <div class="field">
+              <label>Cho phép camera</label>
+              <select id="r-camera" onchange="updatePreview()">
+                <option value="true">Có</option>
+                <option value="false">Không</option>
+              </select>
+            </div>
+            <div class="field">
+              <label>Cho phép FaceTime</label>
+              <select id="r-facetime" onchange="updatePreview()">
+                <option value="true">Có</option>
+                <option value="false">Không</option>
+              </select>
+            </div>
+          </div>
+          <div class="field-row">
+            <div class="field">
+              <label>Yêu cầu Touch ID / Face ID</label>
+              <select id="r-biometric" onchange="updatePreview()">
+                <option value="false">Không</option>
+                <option value="true">Có</option>
+              </select>
+            </div>
+            <div class="field">
+              <label>Cho phép sửa tài khoản</label>
+              <select id="r-accounts" onchange="updatePreview()">
+                <option value="true">Có</option>
+                <option value="false">Không</option>
+              </select>
+            </div>
+          </div>
+          <div class="field-row full">
+            <div class="field">
+              <label>Bundle ID ứng dụng bị chặn (mỗi dòng 1 ID)</label>
+              <textarea id="r-blockedapps" placeholder="com.facebook.Facebook&#10;com.google.chrome.ios" oninput="updatePreview()"></textarea>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- WIFI -->
+      <div class="form-section" id="sec-wifi">
+        <div class="field-group">
+          <div class="field-group-title">Cấu hình WiFi</div>
+          <div class="field-row">
+            <div class="field">
+              <label>SSID mạng *</label>
+              <input id="wifi-ssid" type="text" placeholder="TenMangWiFi" oninput="updatePreview()">
+            </div>
+            <div class="field">
+              <label>Bảo mật</label>
+              <select id="wifi-sec" onchange="updatePreview()">
+                <option value="WPA2">WPA2 Personal</option>
+                <option value="WPA3">WPA3 Personal</option>
+                <option value="WPA2E">WPA2 Enterprise</option>
+                <option value="None">Không bảo mật</option>
+              </select>
+            </div>
+          </div>
+          <div class="field-row">
+            <div class="field">
+              <label>Mật khẩu WiFi</label>
+              <input id="wifi-pass" type="password" placeholder="MatKhauWiFi" oninput="updatePreview()">
+            </div>
+            <div class="field">
+              <label>Ẩn SSID</label>
+              <select id="wifi-hidden" onchange="updatePreview()">
+                <option value="false">Không (SSID hiển thị)</option>
+                <option value="true">Có (SSID ẩn)</option>
+              </select>
+            </div>
+          </div>
+          <div class="field-row">
+            <div class="field">
+              <label>Tự kết nối</label>
+              <select id="wifi-auto" onchange="updatePreview()">
+                <option value="true">Có</option>
+                <option value="false">Không</option>
+              </select>
+            </div>
+            <div class="field">
+              <label>Vô hiệu hóa kết nối khác</label>
+              <select id="wifi-captive" onchange="updatePreview()">
+                <option value="false">Không</option>
+                <option value="true">Có</option>
+              </select>
+            </div>
+          </div>
+          <div class="field-row">
+            <div class="field">
+              <label>Proxy</label>
+              <select id="wifi-proxy" onchange="updatePreview()">
+                <option value="None">Không dùng proxy</option>
+                <option value="Manual">Thủ công</option>
+                <option value="Auto">Tự động (PAC)</option>
+              </select>
+            </div>
+            <div class="field">
+              <label>Địa chỉ proxy : cổng</label>
+              <input id="wifi-proxyaddr" type="text" placeholder="proxy.company.com:8080" oninput="updatePreview()">
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- DOMAIN -->
+      <div class="form-section" id="sec-domain">
+        <div class="field-group">
+          <div class="field-group-title">Cấu hình miền (Domain)</div>
+          <div class="field-row full">
+            <div class="field">
+              <label>Miền email (mỗi dòng 1 miền)</label>
+              <textarea id="dom-email" placeholder="company.com&#10;subsidiary.com" oninput="updatePreview()"></textarea>
+              <span class="hint">Tài khoản email khớp miền này sẽ được xem là tài khoản tổ chức</span>
+            </div>
+          </div>
+          <div class="field-row full">
+            <div class="field">
+              <label>Miền web (SafariPasswordAutoFill)</label>
+              <textarea id="dom-web" placeholder="*.company.com&#10;portal.example.com" oninput="updatePreview()"></textarea>
+            </div>
+          </div>
+          <div class="field-row full">
+            <div class="field">
+              <label>Miền mạng nội bộ</label>
+              <textarea id="dom-cross" placeholder="internal.company.com" oninput="updatePreview()"></textarea>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- AIRPLAY -->
+      <div class="form-section" id="sec-airplay">
+        <div class="field-group">
+          <div class="field-group-title">AirPlay Destinations</div>
+          <div id="airplay-list"></div>
+          <button style="margin-top:10px;padding:8px 16px;background:var(--surface3);border:1px solid var(--border2);border-radius:8px;color:var(--accent);cursor:pointer;font-family:var(--font);font-size:12px;" onclick="addAirplayDevice()">+ Thêm thiết bị AirPlay</button>
+        </div>
+        <div class="field-group">
+          <div class="field-group-title">AirPlay Security</div>
+          <div class="field-row">
+            <div class="field">
+              <label>Chế độ bảo mật</label>
+              <select id="ap-security" onchange="updatePreview()">
+                <option value="none">Không</option>
+                <option value="passcode_once">Mã một lần</option>
+                <option value="passcode_always">Mã mỗi kết nối</option>
+              </select>
+            </div>
+            <div class="field">
+              <label>Mã hóa kênh</label>
+              <select id="ap-encrypt" onchange="updatePreview()">
+                <option value="false">Không</option>
+                <option value="true">Có (AES-128)</option>
+              </select>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- DIGITAL -->
+      <div class="form-section" id="sec-digital">
+        <div class="field-group">
+          <div class="field-group-title">com.config.digital — Phân quyền nâng cao</div>
+          <div class="field-row">
+            <div class="field">
+              <label>Loại digital</label>
+              <select id="dig-type" onchange="updatePreview()">
+                <option value="digital">digital</option>
+                <option value="digital.pro">digital.pro</option>
+                <option value="digital.enterprise">digital.enterprise</option>
+              </select>
+            </div>
+            <div class="field">
+              <label>Cấp phép truy cập</label>
+              <select id="dig-level" onchange="updatePreview()">
+                <option value="standard">standard</option>
+                <option value="elevated">elevated</option>
+                <option value="admin">admin</option>
+              </select>
+            </div>
+          </div>
+          <div class="field-row full">
+            <div class="field">
+              <label>Khóa kích hoạt (ActivationKey)</label>
+              <input id="dig-key" type="text" placeholder="Nhập khóa kích hoạt hoặc để mặc định" oninput="updatePreview()">
+            </div>
+          </div>
+          <div class="field-row full">
+            <div class="field">
+              <label>Danh sách quyền (mỗi dòng 1 quyền)</label>
+              <textarea id="dig-perms" placeholder="com.apple.security.network.client&#10;com.apple.security.network.server&#10;com.apple.private.tcc.allow" oninput="updatePreview()"></textarea>
+            </div>
+          </div>
+          <div class="field-row full">
+            <div class="field">
+              <label>Metadata JSON (tùy chỉnh)</label>
+              <textarea id="dig-meta" placeholder='{"version":"2.0","tier":"enterprise","region":"VN"}' oninput="updatePreview()"></textarea>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div><!-- /form-area -->
+
+    <!-- FILE SETTINGS BAR -->
+    <div class="file-settings">
+      <div class="fs-field">
+        <span class="fs-label">Kích thước file:</span>
+        <div class="denomination-row" id="denomRow">
+          <div class="denom" onclick="setDenom(20)">20KB</div>
+          <div class="denom" onclick="setDenom(50)">50KB</div>
+          <div class="denom" onclick="setDenom(100)">100KB</div>
+          <div class="denom" onclick="setDenom(200)">200KB</div>
+          <div class="denom" onclick="setDenom(300)">300KB</div>
+          <div class="denom" onclick="setDenom(500)">500KB</div>
+          <div class="denom" onclick="setDenom(1024)">1MB</div>
+          <div class="denom" onclick="setDenom(1229)">1.2MB</div>
+          <div class="denom" onclick="setDenom(1536)">1.5MB</div>
+          <div class="denom" onclick="setDenom(2048)">2MB</div>
+          <div class="denom" onclick="setDenom(2560)">2.5MB</div>
+        </div>
+      </div>
+      <div class="size-display" id="sizeDisplay">~0 KB</div>
+      <button class="btn-generate" onclick="generateFile()">⬇ Tạo & Tải .mobileconfig</button>
+    </div>
+  </div>
+
+  <!-- ── RIGHT PANEL ── -->
+  <div class="right-panel">
+    <div class="rp-header">
+      <span class="rp-title">Preview XML</span>
+      <span class="rp-badge" id="rpBadge">plist 1.0</span>
+      <button class="btn-copy" onclick="copyPreview()">⎘ Copy</button>
+    </div>
+    <div class="preview-code" id="previewCode"><span style="color:var(--muted)">— Nhập thông tin để xem preview —</span></div>
+  </div>
+
+</div><!-- /main -->
+
+<!-- ══ ADMIN LOGIN MODAL ══ -->
+<div class="modal-overlay hidden" id="adminLoginModal">
+  <div class="modal">
+    <h3>🔐 Đăng nhập Admin</h3>
+    <p>Nhập tên đăng nhập và mật khẩu để truy cập bảng điều khiển.</p>
+    <div class="modal-field">
+      <label>Tên đăng nhập</label>
+      <input id="adminUser" type="text" placeholder="admin" autocomplete="off">
+    </div>
+    <div class="modal-field">
+      <label>Mật khẩu</label>
+      <input id="adminPass" type="password" placeholder="••••••••" onkeydown="if(event.key==='Enter')doAdminLogin()">
+      <div class="modal-error" id="loginError">Sai tên đăng nhập hoặc mật khẩu.</div>
+    </div>
+    <div class="modal-btns">
+      <button class="btn-modal btn-cancel" onclick="closeModal('adminLoginModal')">Huỷ</button>
+      <button class="btn-modal btn-confirm" onclick="doAdminLogin()">Đăng nhập</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══ ADMIN PANEL ══ -->
+<div class="admin-panel hidden" id="adminPanel">
+  <div class="admin-topbar">
+    <span class="admin-title">⚙ Admin Panel</span>
+    <span style="color:var(--muted);font-size:12px" id="adminWelcome"></span>
+    <div style="margin-left:auto;display:flex;gap:8px;">
+      <button class="btn-admin" style="border-color:var(--error);color:var(--error)" onclick="adminLogout()">Đăng xuất</button>
+      <button class="btn-admin" onclick="closeAdminPanel()">✕ Đóng</button>
+    </div>
+  </div>
+  <div class="admin-tabs">
+    <div class="admin-tab active" onclick="switchAdminTab('history')">📋 Lịch sử tạo file</div>
+    <div class="admin-tab" onclick="switchAdminTab('assets')">📁 Base64 Assets</div>
+    <div class="admin-tab" onclick="switchAdminTab('chat')">💬 Trợ lý AI</div>
+    <div class="admin-tab" onclick="switchAdminTab('settings')">⚙ Cài đặt</div>
+  </div>
+  <div class="admin-content">
+
+    <!-- History -->
+    <div class="admin-section active" id="asec-history">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+        <h3 style="font-family:var(--mono);font-size:14px;color:var(--text)">Lịch sử tạo file cấu hình</h3>
+        <button class="btn-modal btn-cancel" onclick="clearHistory()" style="font-size:11px;padding:6px 14px;">Xoá lịch sử</button>
+      </div>
+      <div id="historyContainer"></div>
+    </div>
+
+    <!-- Assets -->
+    <div class="admin-section" id="asec-assets">
+      <h3 style="font-family:var(--mono);font-size:14px;color:var(--text);margin-bottom:16px;">Base64 Assets (Dữ liệu nhúng vào profile)</h3>
+      <div class="upload-area" id="uploadArea" onclick="document.getElementById('fileUpload').click()">
+        <div class="ua-icon">📂</div>
+        <p>Nhấn để chọn file (cert, icon, data...)</p>
+        <p style="font-size:11px;margin-top:4px;color:var(--muted)">Tự động chuyển sang Base64 để nhúng vào payload</p>
+      </div>
+      <input type="file" id="fileUpload" style="display:none" multiple onchange="handleFileUpload(event)">
+      <div class="b64-list" id="b64List"></div>
+    </div>
+
+    <!-- Chat -->
+    <div class="admin-section" id="asec-chat">
+      <h3 style="font-family:var(--mono);font-size:14px;color:var(--text);margin-bottom:12px;">💬 Trợ lý tư vấn MDM</h3>
+      <div class="quick-questions">
+        <button class="qq-btn" onclick="sendQuick('Độ nhạy cảm biến của iPhone 14 là bao nhiêu?')">📱 Độ nhạy iPhone 14</button>
+        <button class="qq-btn" onclick="sendQuick('Cài mobileconfig trên iOS 17 có gì khác không?')">🔧 iOS 17 mobileconfig</button>
+        <button class="qq-btn" onclick="sendQuick('Làm sao cấu hình VPN IKEv2 cho iPhone?')">🔒 VPN IKEv2</button>
+        <button class="qq-btn" onclick="sendQuick('DoH DNS có hoạt động trên iOS 14 không?')">🌐 DNS DoH iOS</button>
+        <button class="qq-btn" onclick="sendQuick('Giải thích payload com.config.digital là gì?')">💎 com.config.digital</button>
+        <button class="qq-btn" onclick="sendQuick('Cách tạo certificate cho MDM?')">🔐 MDM Certificate</button>
+      </div>
+      <div class="chat-area" id="chatArea">
+        <div class="chat-msg ai">
+          <div class="ai-label">⚡ ConfigForge AI</div>
+          Xin chào! Tôi là trợ lý tư vấn cấu hình MDM. Tôi có thể giúp bạn về: payload mobileconfig, độ nhạy thiết bị iOS/macOS, cài đặt VPN, DNS, chứng chỉ, và nhiều thứ khác. Hỏi gì đi!
+        </div>
+      </div>
+      <div class="chat-input-row">
+        <input class="chat-input" id="chatInput" type="text" placeholder="Hỏi về cấu hình, thiết bị, payload..." onkeydown="if(event.key==='Enter')sendChat()">
+        <button class="btn-chat-send" onclick="sendChat()">Gửi</button>
+      </div>
+    </div>
+
+    <!-- Settings -->
+    <div class="admin-section" id="asec-settings">
+      <h3 style="font-family:var(--mono);font-size:14px;color:var(--text);margin-bottom:16px;">Cài đặt hệ thống</h3>
+      <div class="settings-card">
+        <h4>Bảo mật</h4>
+        <div class="setting-row">
+          <div class="setting-info">
+            <div class="st">Đổi mật khẩu Admin</div>
+            <div class="sd">Thay đổi mật khẩu đăng nhập bảng điều khiển</div>
+          </div>
+          <button class="btn-modal btn-cancel" onclick="showChangePassword()" style="font-size:11px;padding:6px 14px;">Đổi</button>
+        </div>
+        <div class="setting-row">
+          <div class="setting-info">
+            <div class="st">Yêu cầu Serial khi tạo file</div>
+            <div class="sd">Bắt buộc nhập serial thiết bị để tạo file</div>
+          </div>
+          <div class="toggle-switch on" id="tog-serial-req" onclick="this.classList.toggle('on')"></div>
+        </div>
+      </div>
+      <div class="settings-card">
+        <h4>Xuất file</h4>
+        <div class="setting-row">
+          <div class="setting-info">
+            <div class="st">Thêm chữ ký thời gian</div>
+            <div class="sd">Nhúng timestamp vào metadata file</div>
+          </div>
+          <div class="toggle-switch on" id="tog-timestamp" onclick="this.classList.toggle('on')"></div>
+        </div>
+        <div class="setting-row">
+          <div class="setting-info">
+            <div class="st">Ghi log lịch sử tạo file</div>
+            <div class="sd">Lưu mỗi file đã tạo vào lịch sử Admin</div>
+          </div>
+          <div class="toggle-switch on" id="tog-history" onclick="this.classList.toggle('on')"></div>
+        </div>
+      </div>
+      <div class="settings-card">
+        <h4>Thông tin hệ thống</h4>
+        <div class="setting-row">
+          <div class="setting-info"><div class="st">Phiên bản</div></div>
+          <span style="font-family:var(--mono);font-size:12px;color:var(--accent2)">v2.0.0</span>
+        </div>
+        <div class="setting-row">
+          <div class="setting-info"><div class="st">File đã tạo</div></div>
+          <span id="setting-count" style="font-family:var(--mono);font-size:12px;color:var(--success)">0</span>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- Change Password Modal -->
+<div class="modal-overlay hidden" id="changePwModal">
+  <div class="modal">
+    <h3>🔑 Đổi mật khẩu Admin</h3>
+    <p>Nhập mật khẩu cũ và mật khẩu mới.</p>
+    <div class="modal-field">
+      <label>Mật khẩu hiện tại</label>
+      <input id="cpOld" type="password" placeholder="••••••••">
+    </div>
+    <div class="modal-field">
+      <label>Mật khẩu mới</label>
+      <input id="cpNew" type="password" placeholder="••••••••">
+    </div>
+    <div class="modal-field">
+      <label>Xác nhận mật khẩu mới</label>
+      <input id="cpConfirm" type="password" placeholder="••••••••">
+      <div class="modal-error" id="cpError">Lỗi.</div>
+    </div>
+    <div class="modal-btns">
+      <button class="btn-modal btn-cancel" onclick="closeModal('changePwModal')">Huỷ</button>
+      <button class="btn-modal btn-confirm" onclick="doChangePassword()">Lưu</button>
+    </div>
+  </div>
+</div>
+
+<!-- Toast -->
+<div class="toast" id="toast"></div>
+
+<script>
+// ═══════════════════════════════════════════════════
+// CONSTANTS & STATE
+// ═══════════════════════════════════════════════════
+const DEFAULT_ADMIN = { user:'admin', pass:'admin@2024' };
+let adminCreds = JSON.parse(localStorage.getItem('cfg_admin_creds') || 'null') || DEFAULT_ADMIN;
+let isAdminLoggedIn = false;
+let activePayloads = new Set();
+let activeTab = 'general';
+let targetSizeKB = 0;
+let profileType = 'FFTH';
+let b64Assets = JSON.parse(localStorage.getItem('cfg_b64assets') || '[]');
+let fileHistory = JSON.parse(localStorage.getItem('cfg_history') || '[]');
+let airplayDevices = [];
+let toastTimer = null;
+
+// ═══════════════════════════════════════════════════
+// CLOCK
+// ═══════════════════════════════════════════════════
+function updateClock(){
+  const n=new Date();
+  document.getElementById('clock').textContent=n.toLocaleTimeString('vi-VN');
+}
+setInterval(updateClock,1000); updateClock();
+
+// ═══════════════════════════════════════════════════
+// TOAST
+// ═══════════════════════════════════════════════════
+function toast(msg,type='info',dur=2500){
+  const el=document.getElementById('toast');
+  el.textContent=msg; el.className=`toast ${type} show`;
+  clearTimeout(toastTimer);
+  toastTimer=setTimeout(()=>el.classList.remove('show'),dur);
+}
+
+// ═══════════════════════════════════════════════════
+// PAYLOAD TOGGLE
+// ═══════════════════════════════════════════════════
+function togglePayload(id, el){
+  if(activePayloads.has(id)){
+    activePayloads.delete(id);
+    document.getElementById('tog-'+id).classList.remove('on');
+    removeTab(id);
+  } else {
+    activePayloads.add(id);
+    document.getElementById('tog-'+id).classList.add('on');
+    addTab(id);
+    switchTab(id);
+  }
+  updatePreview();
+}
+
+function selectPayload(id){
+  switchTab(id);
+}
+
+function clearAllPayloads(){
+  activePayloads.forEach(id=>{
+    document.getElementById('tog-'+id)?.classList.remove('on');
+    removeTab(id);
+  });
+  activePayloads.clear();
+  switchTab('general');
+  updatePreview();
+  toast('Đã bỏ chọn tất cả payload','info');
+}
+
+const PAYLOAD_LABELS = {
+  dns:'🌐 DNS', vpn:'🔒 VPN', cert:'🔐 Chứng chỉ',
+  accept:'📜 Chấp nhận', webclip:'🔗 Web Clip',
+  restrict:'🚫 Giới hạn', wifi:'📶 WiFi',
+  domain:'🏢 Miền', airplay:'📡 AirPlay', digital:'💎 Digital'
+};
+
+function addTab(id){
+  const bar=document.getElementById('tabBar');
+  if(bar.querySelector(`[data-tab="${id}"]`)) return;
+  const t=document.createElement('div');
+  t.className='tab'; t.dataset.tab=id;
+  t.textContent=PAYLOAD_LABELS[id]||id;
+  t.onclick=()=>switchTab(id);
+  bar.appendChild(t);
+}
+function removeTab(id){
+  const t=document.querySelector(`[data-tab="${id}"]`);
+  if(t) t.remove();
+  if(activeTab===id) switchTab('general');
+}
+function switchTab(id){
+  activeTab=id;
+  document.querySelectorAll('.tab').forEach(t=>t.classList.toggle('active',t.dataset.tab===id));
+  document.querySelectorAll('.form-section').forEach(s=>s.classList.toggle('active',s.id==='sec-'+id));
+}
+
+// ═══════════════════════════════════════════════════
+// FORM HELPERS
+// ═══════════════════════════════════════════════════
+function v(id){ return (document.getElementById(id)||{}).value||''; }
+function setProfileType(t){
+  profileType=t;
+  document.getElementById('pt-ffth').classList.toggle('active',t==='FFTH');
+  document.getElementById('pt-ffm').classList.toggle('active',t==='FFM');
+  updatePreview();
+}
+function setDenom(kb){
+  targetSizeKB=kb;
+  document.querySelectorAll('.denom').forEach(d=>d.classList.remove('active'));
+  event.target.classList.add('active');
+  document.getElementById('sizeDisplay').textContent=kb>=1024?`~${(kb/1024).toFixed(1)} MB`:`~${kb} KB`;
+  updatePreview();
+}
+function setDNS(url,ips,name){
+  document.getElementById('dns-url').value=url;
+  document.getElementById('dns-ips').value=ips;
+  document.getElementById('dns-name').value=name;
+  updatePreview();
+}
+function onSerialInput(){ updatePreview(); }
+
+// AirPlay devices
+function addAirplayDevice(){
+  const idx=airplayDevices.length;
+  airplayDevices.push({name:'Apple TV '+( idx+1),dest:'',pass:''});
+  renderAirplayList();
+}
+function renderAirplayList(){
+  const c=document.getElementById('airplay-list');
+  c.innerHTML=airplayDevices.map((d,i)=>`
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr auto;gap:8px;margin-bottom:8px;align-items:end;">
+      <div class="field"><label>Tên</label><input type="text" value="${d.name}" oninput="airplayDevices[${i}].name=this.value;updatePreview()" style="background:var(--bg);border:1px solid var(--border);border-radius:8px;color:var(--text);padding:7px 10px;font-family:var(--font);font-size:12px;outline:none;width:100%"></div>
+      <div class="field"><label>Destination ID</label><input type="text" value="${d.dest}" placeholder="AA:BB:CC:DD:EE:FF" oninput="airplayDevices[${i}].dest=this.value;updatePreview()" style="background:var(--bg);border:1px solid var(--border);border-radius:8px;color:var(--text);padding:7px 10px;font-family:var(--font);font-size:12px;outline:none;width:100%"></div>
+      <div class="field"><label>Mật khẩu</label><input type="password" value="${d.pass}" oninput="airplayDevices[${i}].pass=this.value;updatePreview()" style="background:var(--bg);border:1px solid var(--border);border-radius:8px;color:var(--text);padding:7px 10px;font-family:var(--font);font-size:12px;outline:none;width:100%"></div>
+      <button onclick="airplayDevices.splice(${i},1);renderAirplayList();updatePreview()" style="padding:7px 10px;background:transparent;border:1px solid var(--error);border-radius:8px;color:var(--error);cursor:pointer;font-size:14px;">✕</button>
+    </div>
+  `).join('');
+}
+
+// ═══════════════════════════════════════════════════
+// UUID GENERATOR
+// ═══════════════════════════════════════════════════
+function uuid(){
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g,c=>{
+    const r=Math.random()*16|0,v=c==='x'?r:(r&0x3|0x8);
+    return v.toString(16);
+  }).toUpperCase();
+}
+
+// ═══════════════════════════════════════════════════
+// PLIST BUILDER
+// ═══════════════════════════════════════════════════
+function buildPlist(forDownload=false){
+  const name   = v('g-name')||'CauHinh';
+  const org    = v('g-org')||'Tổ chức';
+  const desc   = v('g-desc')||'';
+  const ver    = v('g-ver')||'1.0';
+  const scope  = v('g-scope')||'System';
+  const rem    = v('g-removal')||'Always';
+  const serial = v('g-serial')||'';
+  const ts     = new Date().toISOString();
+  const topUUID= uuid();
+
+  let payloads = [];
+
+  // DNS
+  if(activePayloads.has('dns')){
+    const ips=(v('dns-ips')||'').split('\n').filter(Boolean);
+    const doms=(v('dns-domains')||'').split('\n').filter(Boolean);
+    payloads.push(`    <dict>
+      <key>PayloadType</key><string>com.apple.dnsSettings.managed</string>
+      <key>PayloadVersion</key><integer>1</integer>
+      <key>PayloadIdentifier</key><string>com.configforge.dns.${uuid()}</string>
+      <key>PayloadUUID</key><string>${uuid()}</string>
+      <key>PayloadDisplayName</key><string>DNS — ${v('dns-name')||'Custom DNS'}</string>
+      <key>DNSProtocol</key><string>${v('dns-proto')||'HTTPS'}</string>
+      <key>ServerURL</key><string>${v('dns-url')||''}</string>
+      <key>ServerName</key><string>${v('dns-name')||''}</string>
+      <key>ServerAddresses</key><array>${ips.map(ip=>`\n        <string>${ip}</string>`).join('')}
+      </array>
+      ${doms.length?`<key>SupplementalMatchDomains</key><array>${doms.map(d=>`\n        <string>${d}</string>`).join('')}\n      </array>`:''}
+    </dict>`);
+  }
+
+  // VPN
+  if(activePayloads.has('vpn')){
+    payloads.push(`    <dict>
+      <key>PayloadType</key><string>com.apple.vpn.managed</string>
+      <key>PayloadVersion</key><integer>1</integer>
+      <key>PayloadIdentifier</key><string>com.configforge.vpn.${uuid()}</string>
+      <key>PayloadUUID</key><string>${uuid()}</string>
+      <key>PayloadDisplayName</key><string>VPN — ${v('vpn-display')||'Corporate VPN'}</string>
+      <key>UserDefinedName</key><string>${v('vpn-display')||'Corporate VPN'}</string>
+      <key>VPNType</key><string>${v('vpn-proto')||'IKEv2'}</string>
+      <key>IKEv2</key><dict>
+        <key>RemoteAddress</key><string>${v('vpn-server')||''}</string>
+        <key>RemoteIdentifier</key><string>${v('vpn-rid')||v('vpn-server')||''}</string>
+        <key>LocalIdentifier</key><string>${v('vpn-user')||''}</string>
+        <key>AuthenticationMethod</key><string>${v('vpn-auth')||'Password'}</string>
+        ${v('vpn-pass')?`<key>Password</key><string>${v('vpn-pass')}</string>`:''}
+        <key>OnDemandEnabled</key><integer>${v('vpn-demand')||'0'}</integer>
+      </dict>
+    </dict>`);
+  }
+
+  // CERT
+  if(activePayloads.has('cert')){
+    const certData=v('cert-data').replace(/\s/g,'');
+    payloads.push(`    <dict>
+      <key>PayloadType</key><string>${v('cert-type')||'com.apple.security.root'}</string>
+      <key>PayloadVersion</key><integer>1</integer>
+      <key>PayloadIdentifier</key><string>com.configforge.cert.${uuid()}</string>
+      <key>PayloadUUID</key><string>${uuid()}</string>
+      <key>PayloadDisplayName</key><string>Chứng chỉ — ${v('cert-name')||'Certificate'}</string>
+      <key>PayloadCertificateFileName</key><string>${v('cert-name')||'cert'}.cer</string>
+      ${certData?`<key>PayloadContent</key>\n      <data>\n        ${certData}\n      </data>`:'<!-- Chưa có dữ liệu cert -->'}
+      ${v('cert-pass')?`<key>Password</key><string>${v('cert-pass')}</string>`:''}
+    </dict>`);
+  }
+
+  // ACCEPT
+  if(activePayloads.has('accept')){
+    payloads.push(`    <dict>
+      <key>PayloadType</key><string>com.apple.customization.accepteula</string>
+      <key>PayloadVersion</key><integer>1</integer>
+      <key>PayloadIdentifier</key><string>com.configforge.accept.${uuid()}</string>
+      <key>PayloadUUID</key><string>${uuid()}</string>
+      <key>PayloadDisplayName</key><string>${v('acc-title')||'Điều khoản sử dụng'}</string>
+      <key>EULATitle</key><string>${v('acc-title')||''}</string>
+      <key>EULAText</key><string>${v('acc-body')||''}</string>
+      <key>ShowAtDeviceSetup</key><${v('acc-required')||'true'}/>
+      <key>ShowInSettings</key><true/>
+    </dict>`);
+  }
+
+  // WEBCLIP
+  if(activePayloads.has('webclip')){
+    const icData=v('wc-icon').replace(/\s/g,'');
+    payloads.push(`    <dict>
+      <key>PayloadType</key><string>com.apple.webClip.managed</string>
+      <key>PayloadVersion</key><integer>1</integer>
+      <key>PayloadIdentifier</key><string>com.configforge.webclip.${uuid()}</string>
+      <key>PayloadUUID</key><string>${uuid()}</string>
+      <key>PayloadDisplayName</key><string>Web Clip — ${v('wc-label')||'Web App'}</string>
+      <key>Label</key><string>${v('wc-label')||'Web App'}</string>
+      <key>URL</key><string>${v('wc-url')||'https://example.com'}</string>
+      <key>FullScreen</key><${v('wc-fullscreen')||'true'}/>
+      <key>Removable</key><${v('wc-removable')||'false'}/>
+      <key>IgnoreManifestScope</key><${v('wc-ignoremanifest')||'false'}/>
+      ${icData?`<key>Icon</key>\n      <data>\n        ${icData}\n      </data>`:''}
+    </dict>`);
+  }
+
+  // RESTRICTIONS
+  if(activePayloads.has('restrict')){
+    const blocked=(v('r-blockedapps')||'').split('\n').filter(Boolean);
+    payloads.push(`    <dict>
+      <key>PayloadType</key><string>com.apple.applicationaccess</string>
+      <key>PayloadVersion</key><integer>1</integer>
+      <key>PayloadIdentifier</key><string>com.configforge.restrict.${uuid()}</string>
+      <key>PayloadUUID</key><string>${uuid()}</string>
+      <key>PayloadDisplayName</key><string>Giới hạn thiết bị</string>
+      <key>allowAppInstallation</key><${v('r-installapps')||'true'}/>
+      <key>allowAppRemoval</key><${v('r-removeapps')||'true'}/>
+      <key>allowAppStore</key><${v('r-appstore')||'true'}/>
+      <key>allowSafari</key><${v('r-safari')||'true'}/>
+      <key>allowCamera</key><${v('r-camera')||'true'}/>
+      <key>allowFaceTime</key><${v('r-facetime')||'true'}/>
+      <key>allowBiometricModification</key><${v('r-biometric')||'false'}/>
+      <key>allowAccountModification</key><${v('r-accounts')||'true'}/>
+      ${blocked.length?`<key>blockedAppBundleIDs</key><array>${blocked.map(b=>`\n        <string>${b}</string>`).join('')}\n      </array>`:''}
+    </dict>`);
+  }
+
+  // WIFI
+  if(activePayloads.has('wifi')){
+    payloads.push(`    <dict>
+      <key>PayloadType</key><string>com.apple.wifi.managed</string>
+      <key>PayloadVersion</key><integer>1</integer>
+      <key>PayloadIdentifier</key><string>com.configforge.wifi.${uuid()}</string>
+      <key>PayloadUUID</key><string>${uuid()}</string>
+      <key>PayloadDisplayName</key><string>WiFi — ${v('wifi-ssid')||'Network'}</string>
+      <key>SSID_STR</key><string>${v('wifi-ssid')||''}</string>
+      <key>EncryptionType</key><string>${v('wifi-sec')||'WPA2'}</string>
+      ${v('wifi-pass')?`<key>Password</key><string>${v('wifi-pass')}</string>`:''}
+      <key>HIDDEN_NETWORK</key><${v('wifi-hidden')||'false'}/>
+      <key>AutoJoin</key><${v('wifi-auto')||'true'}/>
+      <key>CaptiveBypass</key><${v('wifi-captive')||'false'}/>
+      <key>ProxyType</key><string>${v('wifi-proxy')||'None'}</string>
+      ${v('wifi-proxyaddr')&&v('wifi-proxy')!=='None'?`<key>ProxyServer</key><string>${v('wifi-proxyaddr').split(':')[0]}</string>\n      <key>ProxyServerPort</key><integer>${v('wifi-proxyaddr').split(':')[1]||8080}</integer>`:''}
+    </dict>`);
+  }
+
+  // DOMAIN
+  if(activePayloads.has('domain')){
+    const emails=(v('dom-email')||'').split('\n').filter(Boolean);
+    const webs=(v('dom-web')||'').split('\n').filter(Boolean);
+    const cross=(v('dom-cross')||'').split('\n').filter(Boolean);
+    payloads.push(`    <dict>
+      <key>PayloadType</key><string>com.apple.domains</string>
+      <key>PayloadVersion</key><integer>1</integer>
+      <key>PayloadIdentifier</key><string>com.configforge.domains.${uuid()}</string>
+      <key>PayloadUUID</key><string>${uuid()}</string>
+      <key>PayloadDisplayName</key><string>Cấu hình Miền</string>
+      ${emails.length?`<key>EmailDomains</key><array>${emails.map(e=>`\n        <string>${e}</string>`).join('')}\n      </array>`:''}
+      ${webs.length?`<key>SafariPasswordAutoFillDomains</key><array>${webs.map(w=>`\n        <string>${w}</string>`).join('')}\n      </array>`:''}
+      ${cross.length?`<key>CrossSiteTrackingPreventionRelaxedDomains</key><array>${cross.map(c=>`\n        <string>${c}</string>`).join('')}\n      </array>`:''}
+    </dict>`);
+  }
+
+  // AIRPLAY
+  if(activePayloads.has('airplay')){
+    const devList=airplayDevices.map(d=>`
+        <dict>
+          <key>DeviceName</key><string>${d.name}</string>
+          ${d.dest?`<key>DestinationPath</key><string>${d.dest}</string>`:''}
+          ${d.pass?`<key>Password</key><string>${d.pass}</string>`:''}
+        </dict>`).join('');
+    payloads.push(`    <dict>
+      <key>PayloadType</key><string>com.apple.airplay</string>
+      <key>PayloadVersion</key><integer>1</integer>
+      <key>PayloadIdentifier</key><string>com.configforge.airplay.${uuid()}</string>
+      <key>PayloadUUID</key><string>${uuid()}</string>
+      <key>PayloadDisplayName</key><string>AirPlay</string>
+      <key>AirPlayDestinations</key><array>${devList}
+      </array>
+      <key>AirPlaySecurityType</key><string>${v('ap-security')||'none'}</string>
+      <key>AirPlaySecurityRequiresEncryption</key><${v('ap-encrypt')||'false'}/>
+    </dict>`);
+  }
+
+  // DIGITAL
+  if(activePayloads.has('digital')){
+    const perms=(v('dig-perms')||'').split('\n').filter(Boolean);
+    const meta=v('dig-meta')||'{}';
+    // Get admin b64 assets to embed
+    const assetEmbeds = b64Assets.map(a=>`
+      <!-- Asset: ${a.name} -->
+      <key>AssetData_${a.name.replace(/[^a-zA-Z0-9]/g,'_')}</key>
+      <data>
+        ${a.data.replace(/(.{76})/g,'$1\n        ')}
+      </data>`).join('');
+    payloads.push(`    <dict>
+      <key>PayloadType</key><string>com.config.digital</string>
+      <key>PayloadVersion</key><integer>1</integer>
+      <key>PayloadIdentifier</key><string>com.configforge.digital.${uuid()}</string>
+      <key>PayloadUUID</key><string>${uuid()}</string>
+      <key>PayloadDisplayName</key><string>com.config.digital — ${v('dig-type')||'digital'}</string>
+      <key>DigitalType</key><string>${v('dig-type')||'digital'}</string>
+      <key>AccessLevel</key><string>${v('dig-level')||'standard'}</string>
+      <key>ActivationKey</key><string>${v('dig-key')||uuid()}</string>
+      <key>ProfileType</key><string>${profileType}</string>
+      <key>TargetSerial</key><string>${serial}</string>
+      <key>GeneratedAt</key><string>${ts}</string>
+      <key>PermissionEntitlements</key><array>${perms.map(p=>`\n        <string>${p}</string>`).join('')}
+      </array>
+      <key>DigitalMetadata</key><string>${meta}</string>
+      ${assetEmbeds}
+    </dict>`);
+  }
+
+  // b64 assets (Admin uploaded) embedded as Data payloads
+  if(forDownload && b64Assets.length>0 && !activePayloads.has('digital')){
+    b64Assets.forEach(a=>{
+      payloads.push(`    <!-- Embedded Asset: ${a.name} -->
+    <dict>
+      <key>PayloadType</key><string>com.configforge.embedded.data</string>
+      <key>PayloadVersion</key><integer>1</integer>
+      <key>PayloadIdentifier</key><string>com.configforge.asset.${uuid()}</string>
+      <key>PayloadUUID</key><string>${uuid()}</string>
+      <key>PayloadDisplayName</key><string>Asset — ${a.name}</string>
+      <key>FileName</key><string>${a.name}</string>
+      <key>FileData</key>
+      <data>
+        ${a.data.replace(/(.{76})/g,'$1\n        ')}
+      </data>
+    </dict>`);
+    });
+  }
+
+  const ffmExtra = profileType==='FFM' ? `
+  <key>_FFMMetadata</key>
+  <dict>
+    <key>ProfileScheme</key><string>com.configforge.ffm.v2</string>
+    <key>GenerationEngine</key><string>ConfigForge Pro 2.0</string>
+    <key>Serial</key><string>${serial}</string>
+    <key>Timestamp</key><string>${ts}</string>
+    <key>ActivePayloads</key><integer>${activePayloads.size}</integer>
+  </dict>` : '';
+
+  const serialMeta = serial ? `
+  <key>_TargetDeviceSerial</key><string>${serial}</string>` : '';
+
+  let plist = `<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  ConfigForge Pro — Generated .mobileconfig
+  Profile: ${name}
+  Type: ${profileType}
+  Serial: ${serial||'(not set)'}
+  Generated: ${ts}
+  Payloads: ${[...activePayloads].join(', ')||'(general only)'}
+-->
+<plist version="1.0">
+<dict>
+  <key>PayloadDisplayName</key><string>${name}</string>
+  <key>PayloadDescription</key><string>${desc}</string>
+  <key>PayloadOrganization</key><string>${org}</string>
+  <key>PayloadIdentifier</key><string>com.configforge.profile.${topUUID}</string>
+  <key>PayloadUUID</key><string>${topUUID}</string>
+  <key>PayloadVersion</key><integer>${ver.replace(/[^0-9]/g,'')||1}</integer>
+  <key>PayloadType</key><string>Configuration</string>
+  <key>PayloadScope</key><string>${scope}</string>
+  <key>PayloadRemovalDisallowed</key><${rem==='Never'?'true':'false'}/>
+  <key>RemovalPasswordRequired</key><${rem==='WithAuthentication'?'true':'false'}/>${serialMeta}${ffmExtra}
+  <key>PayloadContent</key>
+  <array>
+${payloads.join('\n')}
+  </array>
+</dict>
+</plist>`;
+
+  // Pad to target size
+  if(forDownload && targetSizeKB>0){
+    const targetBytes = targetSizeKB * 1024;
+    const curBytes = new Blob([plist]).size;
+    if(targetBytes > curBytes){
+      const needed = targetBytes - curBytes - 100;
+      const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/';
+      let pad='';
+      for(let i=0;i<needed;i++) pad+=chars[i%64];
+      // Insert padding as a data comment block before closing plist
+      const padB64 = btoa(pad).match(/.{1,76}/g).join('\n  ');
+      plist = plist.replace('</dict>\n</plist>',
+        `  <!-- ConfigForge Padding Block — Size Tier: ${targetSizeKB>=1024?(targetSizeKB/1024).toFixed(1)+'MB':targetSizeKB+'KB'} -->
+  <key>_PaddingData</key>
+  <data>
+  ${padB64}
+  </data>
+</dict>
+</plist>`);
+    }
+  }
+
+  return plist;
+}
+
+// ═══════════════════════════════════════════════════
+// LIVE PREVIEW
+// ═══════════════════════════════════════════════════
+function syntaxHighlight(xml){
+  return xml
+    .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+    .replace(/(&lt;!--[\s\S]*?--&gt;)/g,'<span style="color:var(--muted)">$1</span>')
+    .replace(/(&lt;\/?(?:plist|dict|array|string|integer|true|false|data|real|date)[^&]*&gt;)/g,'<span style="color:var(--accent)">$1</span>')
+    .replace(/(&lt;key&gt;)(.*?)(&lt;\/key&gt;)/g,'$1<span style="color:var(--accent2)">$2</span>$3')
+    .replace(/(&lt;string&gt;)(.*?)(&lt;\/string&gt;)/g,'$1<span style="color:var(--success)">$2</span>$3')
+    .replace(/(&lt;data&gt;[\s\S]*?&lt;\/data&gt;)/g,'<span style="color:var(--purple)">$1</span>');
+}
+
+let previewTimer=null;
+function updatePreview(){
+  clearTimeout(previewTimer);
+  previewTimer=setTimeout(()=>{
+    try{
+      const xml=buildPlist(false);
+      document.getElementById('previewCode').innerHTML=syntaxHighlight(xml);
+      const kb=(new Blob([xml]).size/1024).toFixed(1);
+      document.getElementById('rpBadge').textContent=`~${kb} KB`;
+    }catch(e){
+      document.getElementById('previewCode').innerHTML=`<span style="color:var(--error)">Error: ${e.message}</span>`;
+    }
+  },250);
+}
+
+function copyPreview(){
+  try{
+    navigator.clipboard.writeText(buildPlist(false));
+    toast('Đã copy XML vào clipboard ✓','success');
+  }catch(e){ toast('Không thể copy','error'); }
+}
+
+// ═══════════════════════════════════════════════════
+// GENERATE & DOWNLOAD
+// ═══════════════════════════════════════════════════
+function generateFile(){
+  const serial=v('g-serial').trim();
+  const reqSerial=document.getElementById('tog-serial-req')?.classList.contains('on');
+  if(reqSerial && !serial){
+    toast('⚠ Vui lòng nhập số serial thiết bị!','error',3000);
+    switchTab('general');
+    document.getElementById('g-serial').focus();
+    return;
+  }
+  const name=v('g-name').trim();
+  if(!name){ toast('⚠ Vui lòng nhập tên cấu hình!','error'); switchTab('general'); return; }
+
+  try{
+    const plist=buildPlist(true);
+    const blob=new Blob([plist],{type:'application/x-apple-aspen-config'});
+    const url=URL.createObjectURL(blob);
+    const a=document.createElement('a');
+    a.href=url;
+    a.download=`${name.replace(/\s+/g,'_')}_${serial||'NoSerial'}.mobileconfig`;
+    document.body.appendChild(a); a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+
+    const kb=(blob.size/1024).toFixed(1);
+    toast(`✅ Đã tạo file ${kb} KB · ${[...activePayloads].length} payload(s)`,'success',3500);
+
+    // Save to history
+    const logEnabled=document.getElementById('tog-history')?.classList.contains('on');
+    if(logEnabled){
+      saveHistory({
+        name, serial, type:profileType,
+        payloads:[...activePayloads].join(', ')||'general',
+        size:kb, ts:new Date().toLocaleString('vi-VN')
+      });
+    }
+  }catch(e){ toast(`Lỗi tạo file: ${e.message}`,'error'); }
+}
+
+// ═══════════════════════════════════════════════════
+// HISTORY
+// ═══════════════════════════════════════════════════
+function saveHistory(entry){
+  fileHistory.unshift(entry);
+  if(fileHistory.length>100) fileHistory.pop();
+  localStorage.setItem('cfg_history',JSON.stringify(fileHistory));
+  renderHistory();
+}
+function clearHistory(){
+  if(confirm('Xoá toàn bộ lịch sử?')){ fileHistory=[]; localStorage.removeItem('cfg_history'); renderHistory(); }
+}
+function renderHistory(){
+  const el=document.getElementById('historyContainer');
+  document.getElementById('setting-count').textContent=fileHistory.length;
+  if(!fileHistory.length){
+    el.innerHTML='<div class="empty-state">📭 Chưa có lịch sử tạo file</div>'; return;
+  }
+  el.innerHTML=`<table class="hist-table">
+    <thead><tr>
+      <th>Tên cấu hình</th><th>Serial</th><th>Loại</th><th>Payload</th><th>Kích thước</th><th>Thời gian</th><th></th>
+    </tr></thead>
+    <tbody>${fileHistory.map((h,i)=>`<tr>
+      <td style="font-family:var(--mono);font-size:11px;color:var(--text)">${h.name}</td>
+      <td style="font-family:var(--mono);font-size:11px;color:var(--accent2)">${h.serial||'—'}</td>
+      <td><span class="hist-badge ${h.type.toLowerCase()}">${h.type}</span></td>
+      <td style="font-size:11px;color:var(--muted2);max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${h.payloads}</td>
+      <td style="font-family:var(--mono);font-size:11px;color:var(--warn)">${h.size} KB</td>
+      <td style="font-size:11px;color:var(--muted)">${h.ts}</td>
+      <td><button class="btn-hist-dl" onclick="deleteHistory(${i})">✕</button></td>
+    </tr>`).join('')}</tbody>
+  </table>`;
+}
+function deleteHistory(i){ fileHistory.splice(i,1); localStorage.setItem('cfg_history',JSON.stringify(fileHistory)); renderHistory(); }
+
+// ═══════════════════════════════════════════════════
+// ADMIN AUTH
+// ═══════════════════════════════════════════════════
+function openAdminLogin(){ document.getElementById('adminLoginModal').classList.remove('hidden'); document.getElementById('adminUser').focus(); }
+function closeModal(id){ document.getElementById(id).classList.add('hidden'); }
+function doAdminLogin(){
+  const u=document.getElementById('adminUser').value.trim();
+  const p=document.getElementById('adminPass').value;
+  if(u===adminCreds.user && p===adminCreds.pass){
+    isAdminLoggedIn=true;
+    closeModal('adminLoginModal');
+    document.getElementById('adminPanel').classList.remove('hidden');
+    document.getElementById('adminWelcome').textContent=`Đăng nhập: ${u}`;
+    document.getElementById('btnAdmin').classList.add('active');
+    document.getElementById('btnAdmin').textContent='⚙ Admin ●';
+    renderHistory(); renderB64List();
+    document.getElementById('loginError').style.display='none';
+    document.getElementById('adminUser').value='';
+    document.getElementById('adminPass').value='';
+  } else {
+    document.getElementById('loginError').style.display='block';
+  }
+}
+function adminLogout(){
+  isAdminLoggedIn=false;
+  document.getElementById('adminPanel').classList.add('hidden');
+  document.getElementById('btnAdmin').classList.remove('active');
+  document.getElementById('btnAdmin').textContent='⚙ Admin';
+}
+function closeAdminPanel(){ document.getElementById('adminPanel').classList.add('hidden'); }
+function switchAdminTab(id){
+  document.querySelectorAll('.admin-tab').forEach((t,i)=>t.classList.toggle('active',['history','assets','chat','settings'][i]===id));
+  document.querySelectorAll('.admin-section').forEach(s=>s.classList.toggle('active',s.id==='asec-'+id));
+}
+function showChangePassword(){ document.getElementById('changePwModal').classList.remove('hidden'); }
+function doChangePassword(){
+  const old=document.getElementById('cpOld').value;
+  const nw=document.getElementById('cpNew').value;
+  const cf=document.getElementById('cpConfirm').value;
+  const errEl=document.getElementById('cpError');
+  if(old!==adminCreds.pass){ errEl.textContent='Mật khẩu hiện tại sai.'; errEl.style.display='block'; return; }
+  if(nw.length<6){ errEl.textContent='Mật khẩu mới tối thiểu 6 ký tự.'; errEl.style.display='block'; return; }
+  if(nw!==cf){ errEl.textContent='Mật khẩu xác nhận không khớp.'; errEl.style.display='block'; return; }
+  adminCreds.pass=nw;
+  localStorage.setItem('cfg_admin_creds',JSON.stringify(adminCreds));
+  closeModal('changePwModal');
+  toast('✅ Đã đổi mật khẩu thành công','success');
+  errEl.style.display='none';
+  document.getElementById('cpOld').value='';
+  document.getElementById('cpNew').value='';
+  document.getElementById('cpConfirm').value='';
+}
+
+// ═══════════════════════════════════════════════════
+// BASE64 ASSET UPLOAD
+// ═══════════════════════════════════════════════════
+function handleFileUpload(e){
+  const files=[...e.target.files];
+  let processed=0;
+  files.forEach(file=>{
+    const reader=new FileReader();
+    reader.onload=ev=>{
+      const b64=ev.target.result.split(',')[1];
+      b64Assets.push({name:file.name,data:b64,size:(file.size/1024).toFixed(1),type:file.type});
+      localStorage.setItem('cfg_b64assets',JSON.stringify(b64Assets));
+      if(++processed===files.length){ renderB64List(); toast(`✅ Đã upload ${files.length} file(s)`,'success'); }
+    };
+    reader.readAsDataURL(file);
+  });
+  e.target.value='';
+}
+function renderB64List(){
+  const el=document.getElementById('b64List');
+  if(!b64Assets.length){ el.innerHTML='<div class="empty-state">📂 Chưa có asset nào</div>'; return; }
+  el.innerHTML=b64Assets.map((a,i)=>`
+    <div class="b64-item">
+      <span style="font-size:20px">${a.type?.includes('image')?'🖼':'📄'}</span>
+      <span class="b64-name">${a.name}</span>
+      <span class="b64-size">${a.size} KB</span>
+      <button class="b64-del" onclick="deleteAsset(${i})" title="Xóa">✕</button>
+    </div>`).join('');
+}
+function deleteAsset(i){ b64Assets.splice(i,1); localStorage.setItem('cfg_b64assets',JSON.stringify(b64Assets)); renderB64List(); }
+
+// ═══════════════════════════════════════════════════
+// AI CHAT
+// ═══════════════════════════════════════════════════
+const AI_KB = {
+  'độ nhạy':'Độ nhạy cảm biến phụ thuộc vào từng dòng máy. iPhone 15 Pro sử dụng cảm biến Sony IMX903 với độ nhạy cao hơn 20% so với 14. Để cấu hình qua MDM, bạn có thể dùng payload com.apple.applicationaccess để kiểm soát quyền truy cập camera/cảm biến.',
+  'ios 17':'iOS 17 thêm hỗ trợ DNS over TLS (DoT) cho mobileconfig, cải thiện payload com.apple.dnsSettings.managed. Ngoài ra, payload com.apple.airplay đã được cập nhật với AirPlaySecurityType mới.',
+  'ikev2':'IKEv2 là giao thức VPN được Apple khuyến nghị cho iOS/macOS. Trong mobileconfig, dùng VPNType: IKEv2 với các key: RemoteAddress, RemoteIdentifier, AuthenticationMethod. Khuyến nghị dùng Certificate auth thay Password auth để bảo mật hơn.',
+  'doh':'DNS over HTTPS hoạt động từ iOS 14 trở lên. Cần thêm payload com.apple.dnsSettings.managed với DNSProtocol: HTTPS. iOS 14+ và macOS 11+ đều hỗ trợ. Lưu ý: cần scope là System để áp dụng toàn thiết bị.',
+  'digital':'com.config.digital là payload tùy chỉnh cho phép nhúng metadata và dữ liệu cấu hình nâng cao. PayloadType này không phải payload chuẩn Apple nhưng có thể tồn tại trong plist và được đọc bởi app MDM hỗ trợ. Dùng để lưu ActivationKey, AccessLevel và Entitlements.',
+  'certificate':'Để tạo certificate cho MDM: 1) Tạo CSR từ máy Mac bằng Keychain Access, 2) Ký bởi CA (có thể tự ký bằng OpenSSL), 3) Export ra .p12, 4) Chuyển sang Base64, 5) Nhúng vào payload com.apple.security.pkcs12.',
+  'wifi':'Payload com.apple.wifi.managed hỗ trợ WPA2/WPA3 Personal và Enterprise. Với WPA2 Enterprise cần thêm EAPClientConfiguration dict. AutoJoin: true sẽ tự kết nối khi trong vùng phủ sóng.',
+  'vpn':'Giao thức VPN được Apple khuyến nghị: IKEv2 > IPSec > L2TP. PPTP không còn được hỗ trợ từ iOS 10. AlwaysOn VPN yêu cầu MDM enrollment và chỉ hoạt động với IKEv2.',
+  'serial':'Serial thiết bị Apple có thể tìm trong: Cài đặt → Cài đặt chung → Giới thiệu → Số Serial. Định dạng: 12 ký tự alphanumeric (VD: C02XG2JHJGH5). Dùng để tạo profile riêng cho từng thiết bị.',
+  'mobileconfig':'File .mobileconfig là plist XML theo chuẩn Apple Configuration Profile. Cài đặt trực tiếp bằng cách mở file trên thiết bị iOS/macOS, sau đó vào Cài đặt → Đã tải về profile → Cài đặt. Cần xác nhận trong Cài đặt → Chung → VPN & Quản lý thiết bị.',
+};
+
+function findAIAnswer(q){
+  const ql=q.toLowerCase();
+  for(const [key,ans] of Object.entries(AI_KB)){
+    if(ql.includes(key)) return ans;
+  }
+  return `Câu hỏi của bạn về "${q.substring(0,40)}..." — Đây là lĩnh vực MDM/iOS. Thông thường, bạn cần kiểm tra tài liệu Apple Configuration Profile Reference tại https://developer.apple.com/business/documentation/Configuration-Profile-Reference.pdf cho thông tin chính xác nhất về payload type này. Bạn có thể hỏi cụ thể hơn về một payload hoặc thiết bị cụ thể không?`;
+}
+
+function appendChat(msg,role){
+  const area=document.getElementById('chatArea');
+  const el=document.createElement('div');
+  el.className=`chat-msg ${role}`;
+  el.innerHTML=role==='ai'?`<div class="ai-label">⚡ ConfigForge AI</div>${msg}`:msg;
+  area.appendChild(el);
+  area.scrollTop=area.scrollHeight;
+}
+function sendChat(){
+  const inp=document.getElementById('chatInput');
+  const q=inp.value.trim(); if(!q) return;
+  appendChat(q,'user'); inp.value='';
+  setTimeout(()=>appendChat(findAIAnswer(q),'ai'),600);
+}
+function sendQuick(q){
+  document.getElementById('chatInput').value=q;
+  sendChat();
+  switchAdminTab('chat');
+}
+
+// ═══════════════════════════════════════════════════
+// INIT
+// ═══════════════════════════════════════════════════
+renderHistory();
+renderB64List();
+updatePreview();
+</script>
+</body>
+</html>
